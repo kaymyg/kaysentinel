@@ -24,11 +24,16 @@ A post-execution authorization framework for state-machine systems (e.g. Ethereu
 
 Nothing below is implemented yet. See [`docs/implementation_roadmap.md`](docs/implementation_roadmap.md) for the full phased task breakdown (SSZ schema, Go/Rust extractors, CI pipeline). Short version:
 
-- [ ] Phase 1 — canonical SSZ schema + Go/Rust serialization libraries
-- [ ] Phase 2 — Geth-side extractor (`StateDB` journal hook)
-- [ ] Phase 2 — Reth-side extractor (`BundleState` hook)
-- [x] Phase 3 — verification harness (`scripts/verify_ssr.py`) — comparison logic only, done
-- [ ] Phase 3 — test runner environment + GitHub Actions CI
+**Phase 1 — Canonical type system**
+- [ ] SSZ schema + Go/Rust serialization libraries
+
+**Phase 2 — Client extractors**
+- [ ] Geth-side extractor (`StateDB` journal hook)
+- [ ] Reth-side extractor (`BundleState` hook)
+
+**Phase 3 — Differential testing infrastructure**
+- [x] Verification harness (`scripts/verify_ssr.py`) — comparison logic only, done
+- [ ] Test runner environment + GitHub Actions CI
 
 ## License
 
