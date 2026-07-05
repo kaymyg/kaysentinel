@@ -1,3 +1,11 @@
+---
+license: mit
+tags:
+  - ethereum
+  - formal-methods
+  - evm
+---
+
 # Kaysentinel / PCAL + Sentinel
 
 A post-execution authorization framework for state-machine systems (e.g. Ethereum-class runtimes). Kaysentinel lifts execution traces into a canonical **Structural Sufficient Representation (SSR)** and evaluates policy purely over that quotient space, so authorization decisions are provably independent of *which* client (Geth, Reth, ...) produced the trace.
@@ -20,4 +28,4 @@ A post-execution authorization framework for state-machine systems (e.g. Ethereu
 
 ## License
 
-Add a license before publishing publicly (e.g. MIT/Apache-2.0) — none is specified yet.
+MIT — see [`LICENSE`](LICENSE).
