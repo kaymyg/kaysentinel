@@ -54,6 +54,15 @@ The serialization layer needs to be settled before client logic begins, to preve
 - [ ] **4.2 Build the test runner environment.** A script that spins up ephemeral, lightweight test harnesses for both Geth and Reth, feeds them the same raw transaction/pre-state input, and captures their respective `.bin` outputs.
 - [ ] **4.3 Automate CI.** A GitHub Actions workflow that runs the full test matrix on every pull request, and fails the build on any binary drift or size mismatch between the two extractor outputs.
 
+## Phase 4 — Fuzzing & Production Benchmarking (future, not started)
+
+Depends entirely on Phase 1 and Phase 2 being complete — there's no extractor to compare or benchmark yet, so nothing here should be built before that.
+
+- [ ] `fuzz_seeds/` — high-entropy multi-account fuzzing inputs (irregular address/slot access patterns) to stress-test that Go's map iteration and Rust's `BTreeMap` always converge on the same sorted SSZ tree.
+- [ ] `production_traces/` — real historical block extractions (e.g. via a tool like `cryo` against an archive RPC endpoint), used to validate the O(N) complexity claim in `docs/framework.md` section 7 against real-world block sizes.
+
+See the companion dataset repo: [`Sahek/kaysentinel-fixtures`](https://huggingface.co/datasets/Sahek/kaysentinel-fixtures) for the curated Phase 3 test fixtures that exist today.
+
 ## Current status summary
 
 | Phase | Item | Status |
