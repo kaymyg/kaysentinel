@@ -16,15 +16,19 @@ A post-execution authorization framework for state-machine systems (e.g. Ethereu
 
 - [`docs/framework.md`](docs/framework.md) — full formal spec: execution model, SSR canonical form, authorization/factorization theory, multi-client portability theorem, gating semantics, complexity model.
 - [`docs/differential_testing.md`](docs/differential_testing.md) — the differential testing engine design used to check byte-level convergence between a Geth-side and Reth-side SSR extractor.
+- [`docs/implementation_roadmap.md`](docs/implementation_roadmap.md) — concrete engineering tasks (Phase 1–3) to turn the spec into a working implementation.
 - [`scripts/verify_ssr.py`](scripts/verify_ssr.py) — standalone verifier that hashes and byte-diffs two SSZ-encoded SSR outputs.
 - [`tests/transient_storage_case.json`](tests/transient_storage_case.json) — example test vector (EIP-1153 transient storage + reentrancy rollback).
 
-## Roadmap (not yet implemented)
+## Roadmap
 
-- [ ] Geth-side extractor (`StateDB` journal hook)
-- [ ] Reth-side extractor (`BundleState` hook)
-- [ ] SSZ canonical encoder for `Δ` (the SSR type)
-- [ ] CI job running `scripts/verify_ssr.py` against both extractors per test vector
+Nothing below is implemented yet. See [`docs/implementation_roadmap.md`](docs/implementation_roadmap.md) for the full phased task breakdown (SSZ schema, Go/Rust extractors, CI pipeline). Short version:
+
+- [ ] Phase 1 — canonical SSZ schema + Go/Rust serialization libraries
+- [ ] Phase 2 — Geth-side extractor (`StateDB` journal hook)
+- [ ] Phase 2 — Reth-side extractor (`BundleState` hook)
+- [x] Phase 3 — verification harness (`scripts/verify_ssr.py`) — comparison logic only, done
+- [ ] Phase 3 — test runner environment + GitHub Actions CI
 
 ## License
 
