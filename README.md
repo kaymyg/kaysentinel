@@ -17,6 +17,7 @@ A post-execution authorization framework for state-machine systems (e.g. Ethereu
 - [`docs/framework.md`](docs/framework.md) — full formal spec: execution model, SSR canonical form, authorization/factorization theory, multi-client portability theorem, gating semantics, complexity model.
 - [`docs/differential_testing.md`](docs/differential_testing.md) — the differential testing engine design used to check byte-level convergence between a Geth-side and Reth-side SSR extractor.
 - [`docs/implementation_roadmap.md`](docs/implementation_roadmap.md) — concrete engineering tasks (Phase 1–3) to turn the spec into a working implementation.
+- Curated test fixtures now live in a separate dataset repo: [`Sahek/kaysentinel-fixtures`](https://huggingface.co/datasets/Sahek/kaysentinel-fixtures).
 - [`scripts/verify_ssr.py`](scripts/verify_ssr.py) — standalone verifier that hashes and byte-diffs two SSZ-encoded SSR outputs.
 - [`tests/transient_storage_case.json`](tests/transient_storage_case.json) — example test vector (EIP-1153 transient storage + reentrancy rollback).
 
