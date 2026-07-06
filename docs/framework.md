@@ -1,5 +1,13 @@
 # Kaysentinel / PCAL + Sentinel — Formal + Engineering Framework
 
+> **See also:** [`semantic_contract.md`](./semantic_contract.md) is now the
+> normative source of truth for the extraction semantics summarized
+> informally in §1 and §2.3–2.4 below (identity pruning, lifecycle
+> resolution, the Included/Rejected × Success/Revert/Halt outcome matrix,
+> and the SSZ sorting rules). This file keeps the higher-level architecture
+> and theorem statements; where the two disagree, `semantic_contract.md`
+> governs.
+
 ## 0. System Overview
 
 Kaysentinel defines a post-execution authorization architecture for state-machine systems (e.g., Ethereum-class runtimes) by lifting execution traces into a canonical Structural Sufficient Representation (SSR) and evaluating policies purely over that quotient space.
@@ -49,6 +57,8 @@ Primitive types: Address = Bytes20, Hash = Bytes32, Uint64 / Uint256.
 2. Storage sorted by slot
 3. Logs preserve execution order
 4. Serialization = SSZ canonical encoding
+
+See `semantic_contract.md` §5 for the exact byte-wise sorting comparator.
 
 ### 2.4 Canonical Constraint
 
@@ -152,5 +162,6 @@ Specified across:
 - Policy calculus (Ã factorization)
 - Execution gating semantics (PASS/FAIL/QUARANTINE)
 - Complexity guarantees (O(N) / O(N log N))
+- Normative semantic contract with a validation-vector catalog (see `semantic_contract.md` and `../tests/` in the fixtures repo)
 
 **Not yet done:** no reference implementation exists for the Geth/Reth extractors or the SSZ encoder. The theorems above are design invariants to build and test against, not proofs that have been mechanically verified.
