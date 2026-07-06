@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "KAYSentinelSemanticValidationSchema",
+  "type": "object",
+  "properties": {
+    "vector_id": { "type": "string", "pattern": "^KS-(ST|RB|LC|TS|OR)-[0-9]{3}$" },
+    "category": { "type": "string", "enum": ["Storage", "Rollback", "Lifecycle", "Transient", "Ordering"] },
+    "compliance_level": { "type": "string", "enum": ["MUST", "SHOULD", "OPTIONAL", "INFORMATIONAL"] },
+    "expected_result": { "type": "string", "enum": ["PASS", "FAIL"] },
+    "description": { "type": "string" },
+    "specification_version": { "type": "string" },
+    "fork_identifier": { "type": "string", "enum": ["LONDON", "SHANGHAI", "CANCUN", "PRAGUE", "OSAKA"] },
+    "pre_state": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "nonce": { "type": "integer", "minimum": 0 },
+          "balance": { "type": "string", "pattern": "^[0-9]+$" },
+          "code": { "type": "string", "pattern": "^0x([0-9a-fA-F]{2})*$" },
+          "storage": {
+            "type": "object",
+            "additionalProperties": { "type": "string", "pattern": "^0x[0-9a-fA-F]{64}$" }
+          }
+        },
+        "required": ["nonce", "balance", "code", "storage"]
+      }
+    },
+    "journal_mutation_sequence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "step": { "type": "integer" },
+          "context_depth": { "type": "integer", "minimum": 1 },
+          "journal_action": { "type": "string", "enum": ["NONCE_MUTATION", "BALANCE_MUTATION", "CODE_MUTATION", "STORAGE_MUTATION", "TRANSIENT_MUTATION", "FRAME_REVERT"] },
+          "address": { "type": "string", "pattern": "^0x[0-9a-fA-F]{40}$" },
+          "new_nonce": { "type": "integer", "minimum": 0 },
+          "new_balance": { "type": "string", "pattern": "^[0-9]+$" },
+          "new_code": { "type": "string", "pattern": "^0x([0-9a-fA-F]{2})*$" },
+          "slot": { "type": "string", "pattern": "^0x[0-9a-fA-F]{64}$" },
+          "new_value": { "type": "string", "pattern": "^0x[0-9a-fA-F]{64}$" }
+        },
+        "required": ["step", "context_depth", "journal_action", "address"]
+      }
+    },
+    "expected_normalized_ssr": {
+      "type": "object",
+      "properties": {
+        "consensus_outcome": { "type": "string", "enum": ["Included", "Rejected"] },
+        "execution_outcome": { "type": "string", "enum": ["Success", "Revert", "ExceptionalHalt"] },
+        "account_deltas": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "address": { "type": "string", "pattern": "^0x[0-9a-fA-F]{40}$" },
+              "nonce": {
+                "type": "object",
+                "properties": { "original": { "type": "integer" }, "current": { "type": "integer" } },
+                "required": ["original", "current"]
+              },
+              "balance": {
+                "type": "object",
+                "properties": { "original": { "type": "string", "pattern": "^[0-9]+$" }, "current": { "type": "string", "pattern": "^[0-9]+$" } },
+                "required": ["original", "current"]
+              },
+              "code_hash": {
+                "type": "object",
+                "properties": { "original": { "type": "string", "pattern": "^0x[0-9a-fA-F]{64}$" }, "current": { "type": "string", "pattern": "^0x[0-9a-fA-F]{64}$" } },
+                "required": ["original", "current"]
+              },
+              "storage_updates": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "slot": { "type": "string", "pattern": "^0x[0-9a-fA-F]{64}$" },
+                    "original": { "type": "string", "pattern": "^0x[0-9a-fA-F]{64}$" },
+                    "current": { "type": "string", "pattern": "^0x[0-9a-fA-F]{64}$" }
+                  },
+                  "required": ["slot", "original", "current"]
+                }
+              }
+            },
+            "required": ["address", "nonce", "balance", "code_hash", "storage_updates"]
+          }
+        }
+      },
+      "required": ["consensus_outcome", "execution_outcome", "account_deltas"]
+    }
+  },
+  "required": [
+    "vector_id",
+    "category",
+    "compliance_level",
+    "expected_result",
+    "description",
+    "specification_version",
+    "fork_identifier",
+    "pre_state",
+    "journal_mutation_sequence",
+    "expected_normalized_ssr"
+  ]
+}
