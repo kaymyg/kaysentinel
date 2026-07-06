@@ -6,7 +6,9 @@
 > resolution, the Included/Rejected × Success/Revert/Halt outcome matrix,
 > and the SSZ sorting rules). This file keeps the higher-level architecture
 > and theorem statements; where the two disagree, `semantic_contract.md`
-> governs.
+> governs. [`validation_vector_spec.md`](./validation_vector_spec.md) defines
+> the frozen v1.0.0 test-vector schema and mutation-event vocabulary used by
+> the conformance vectors in the fixtures repo's `validation_vectors/`.
 
 ## 0. System Overview
 

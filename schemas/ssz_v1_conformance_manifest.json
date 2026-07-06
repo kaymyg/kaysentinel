@@ -1,0 +1,10 @@
+{
+  "profile_id": "SSZ-V1",
+  "profile_target_version": "1.0.0",
+  "status": "template -- no SSZ encoder exists yet; do not fill these in by hand",
+  "vector_targets": [
+    { "vector_id": "KS-ST-001", "serialized_length": null, "expected_root_hash": null },
+    { "vector_id": "KS-LC-001", "serialized_length": null, "expected_root_hash": null },
+    { "vector_id": "KS-OR-001", "serialized_length": null, "expected_root_hash": null }
+  ]
+}
