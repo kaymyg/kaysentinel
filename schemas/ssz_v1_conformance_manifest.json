@@ -1,10 +1,22 @@
 {
   "profile_id": "SSZ-V1",
   "profile_target_version": "1.0.0",
-  "status": "template -- no SSZ encoder exists yet; do not fill these in by hand",
+  "status": "computed by scripts/ssz_reference.py against remerkleable; validates encoding/merkleization only, not client fidelity",
   "vector_targets": [
-    { "vector_id": "KS-ST-001", "serialized_length": null, "expected_root_hash": null },
-    { "vector_id": "KS-LC-001", "serialized_length": null, "expected_root_hash": null },
-    { "vector_id": "KS-OR-001", "serialized_length": null, "expected_root_hash": null }
+    {
+      "vector_id": "KS-ST-001",
+      "serialized_length": 178,
+      "expected_root_hash": "0xc8126efde2ba3b1d5522dcec67e30ef4bba0a2035dde10b58c0a1051d9c6af57"
+    },
+    {
+      "vector_id": "KS-LC-001",
+      "serialized_length": 522,
+      "expected_root_hash": "0xfc2dead1010c51bae0a947ddd7741610c39f8c2ca40b9d8d7fe3daf7cf422c1c"
+    },
+    {
+      "vector_id": "KS-OR-001",
+      "serialized_length": 1174,
+      "expected_root_hash": "0xb3ab131154104ec0bab269fcdeb2927a01af798ba36571e1e81a4ab09f4963fd"
+    }
   ]
 }
