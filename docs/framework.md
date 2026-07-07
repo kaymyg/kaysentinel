@@ -12,6 +12,10 @@
 > [`ssz_profile.md`](./ssz_profile.md) defines the Layer 2 serialization and
 > merkleization rules, with a real, reproducible worked example and a
 > runnable reference encoder (`../scripts/ssz_reference.py`).
+> [`emes_profile.md`](./emes_profile.md) defines the Layer 0.5 client
+> telemetry format and a compiled, `go vet`-clean Geth tracer
+> (`../tracer/kaysentinel_tracer.go`) targeting go-ethereum's current
+> `tracing.Hooks` API.
 
 ## 0. System Overview
 
