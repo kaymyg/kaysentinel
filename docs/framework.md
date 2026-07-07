@@ -13,9 +13,13 @@
 > merkleization rules, with a real, reproducible worked example and a
 > runnable reference encoder (`../scripts/ssz_reference.py`).
 > [`emes_profile.md`](./emes_profile.md) defines the Layer 0.5 client
-> telemetry format and a compiled, `go vet`-clean Geth tracer
+> telemetry format and a compiled, tested Geth tracer
 > (`../tracer/kaysentinel_tracer.go`) targeting go-ethereum's current
-> `tracing.Hooks` API.
+> `tracing.Hooks` API, plus a real Gate 1 structural verifier
+> (`../validation/gate1.go`) and fixture-writing harness
+> (`../harness/harness.go`). Wire event types live in `../emes/`, kept
+> separate from the Geth-specific collector so a future Reth/Besu adapter
+> can reuse them.
 
 ## 0. System Overview
 

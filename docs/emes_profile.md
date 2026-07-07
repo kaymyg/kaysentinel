@@ -133,7 +133,96 @@ stable tag** (e.g. `go get github.com/ethereum/go-ethereum@v1.16.9`) rather
 than `master`, so the hook surface you're coding against doesn't shift under
 you.
 
-### 5.5 What's still not done
+### 5.5 Second design pass: package split, structured errors, Gate 1
+
+A later design pass proposed several genuinely good additions layered on
+top of §5.2-5.4: an `EnvironmentDescriptor` for fork/client-aware
+classification, structured `InternalTracerError` diagnostics instead of
+silent no-ops, a self-describing `FixtureEnvelope` for provenance-stamped
+fixture files, and a two-gate conformance architecture (Gate 1: structural
+stream verification; Gate 2: semantic state-replay verification, not yet
+implemented). All of these were adopted.
+
+**What was not adopted as pasted:** the accompanying tracer refactor
+targeted `CaptureEnter`/`CaptureExit` again, with a signature
+(`CaptureEnter(typ vm.OpCode, from, to, input, gas, value [32]byte)`) that
+doesn't match `tracing.EnterHook` (`func(depth int, typ byte, from, to
+common.Address, input []byte, gas uint64, value *big.Int)`) on four counts:
+missing `depth`, `typ` as `vm.OpCode` instead of `byte`, `value` as
+`[32]byte` instead of `*big.Int`, and `Capture*`-named methods that aren't
+`tracing.Hooks` fields at all. It also renamed `FrameID`/`ParentFrameID` to
+`Fid`/`ParentFid`, which would have silently diverged from the struct names
+already committed here. The additive ideas above were merged into the
+already-compiling `tracing.Hooks`-based tracer from §5.2 instead of
+replacing it.
+
+**What changed as a result:**
+
+- The EMES-V1 event structs moved to their own package, `emes/`, separate
+  from the Geth-specific collector in `tracer/`. This is a real improvement:
+  a future Reth or Besu adapter can produce `emes.Event` values without
+  importing anything Geth-specific.
+- Every address/hash/256-bit-value field changed from a raw `[20]byte` /
+  `[32]byte` to `emes.Address` / `emes.Hash`, which implement
+  `MarshalJSON`/`UnmarshalJSON` as `"0x..."` hex strings. Raw fixed-size byte
+  arrays serialize as JSON arrays of small integers by default in Go, which
+  would have made every fixture file this project produces unreadable and
+  inconsistent with the hex-string convention already used everywhere else
+  in this repo (`semantic_contract.md`, `validation_vectors/*.json`).
+  Verified: see §5.6.
+- Every emitted event now carries an explicit `"type"` tag in its JSON
+  encoding (`emes.Event.Kind()`), since a bare `[]Event` slice gives a JSON
+  reader no way to tell a `BlockStartEvent` from a `FrameEnterEvent` other
+  than by guessing from its field set.
+- Internal tracer anomalies (an `OnExit` with no matching `OnEnter`, an
+  unclosed frame at transaction end) are now logged as structured
+  `emes.InternalTracerError` values instead of being silently dropped.
+- **Gate 1 is a real, working implementation**
+  (`validation/gate1.go`), not a stub: it checks block/tx encapsulation,
+  strict sequence monotonicity, and frame stack balance/topology. It was
+  tested against both a valid stream and two deliberately broken ones (see
+  §5.6) to confirm it actually rejects violations rather than rubber-stamping
+  everything.
+- The harness (`harness/harness.go`) runs Gate 1, then writes a
+  `FixtureEnvelope` to `<base>/<network>/<fork>/<client>-<version>/<scenario
+  ID>.json`, matching the proposed directory layout.
+- **Gate 2 (semantic replay)** is still unimplemented -- it needs an actual
+  state-reconstruction engine that can replay an EMES stream against a
+  pre-state and compare resulting roots across two clients. That's
+  materially more work than Gate 1 and hasn't been started.
+
+### 5.6 Verification performed (second pass)
+
+All of this was compiled and run, not just written:
+
+```bash
+go build ./emes/... ./tracer/... ./validation/... ./harness/...
+go vet   ./emes/... ./tracer/... ./validation/... ./harness/...
+```
+
+Both clean. Beyond compiling, three things were actually executed:
+
+1. A synthetic transaction (CALL, then nonce/balance mutations, then
+   SELFDESTRUCT to a beneficiary, then frame exit, tx end, block commit) was
+   driven through the real tracer by calling its hook methods directly. The
+   resulting stream passed Gate 1, and the SELFDESTRUCT correlation logic
+   (§5.2) correctly synthesized a `SelfDestructEvent` from the paired
+   `CodeChangeSelfDestruct` / `BalanceIncreaseSelfdestruct` reason codes.
+2. Gate 1 was fed two deliberately broken streams -- one with an unclosed
+   frame at transaction end, one with a non-increasing sequence number --
+   and correctly rejected both with the specific rule that was violated,
+   confirming it isn't a no-op.
+3. The harness was run against that same tracer output and actually wrote a
+   fixture file to
+   `ethereum-mainnet/cancun/geth-1.16.9/smoketest-selfdestruct-01.json`,
+   with readable hex addresses/hashes and `"type"` tags on every event, as
+   designed.
+
+This still isn't run against a real go-ethereum node -- the "transaction"
+above was hand-constructed hook calls, not a real EVM execution. That's the
+same gap noted in §5.4.
+
+### 5.7 What's still not done
 
 This is a compiling event-collection tracer, not a working extractor:
 
