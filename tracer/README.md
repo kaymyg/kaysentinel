@@ -1,33 +1,47 @@
-# KAY Sentinel Geth Tracer (EMES-V1 collection)
+# KAY Sentinel Geth Tracer + Conformance Pipeline
 
-`kaysentinel_tracer.go` implements EMES-V1 event collection against
-go-ethereum's current `core/tracing.Hooks` live-tracing API. See
-[`../docs/emes_profile.md`](../docs/emes_profile.md) for what changed from
-the original `vm.EVMLogger`-based design and why.
+This directory (together with `../emes/`, `../validation/`, and
+`../harness/`) implements EMES-V1 collection and Gate 1 structural
+verification. See [`../docs/emes_profile.md`](../docs/emes_profile.md) for
+the full design writeup, including two rounds of corrections against the
+real go-ethereum source.
 
-## Verifying it compiles
+- `../emes/` -- wire event types (`Event`/`MutableEvent`, the 12 EMES-V1
+  event structs, hex-marshaling `Address`/`Hash` types, `FixtureEnvelope`,
+  `EnvironmentDescriptor`, structured `InternalTracerError`). No Geth
+  dependency -- a future Reth/Besu adapter could import just this package.
+- `kaysentinel_tracer.go` -- the Geth-specific collector, implementing
+  `core/tracing.Hooks`.
+- `../validation/gate1.go` -- real structural verifier (block/tx
+  encapsulation, sequence monotonicity, frame balance).
+- `../harness/harness.go` -- runs Gate 1, then writes a `FixtureEnvelope` to
+  `<base>/<network>/<fork>/<client>-<version>/<scenario>.json`.
 
-This package depends on `github.com/ethereum/go-ethereum`, which requires
-**Go 1.24+** (its `go.mod` uses a `tool` directive older Go versions can't
-parse). Pin to a stable release rather than `master` -- see
-`docs/emes_profile.md` §5.4 for why.
+## Verifying it compiles and runs
+
+Requires **Go 1.24+** (go-ethereum's `go.mod` uses a `tool` directive older
+Go can't parse). Pin to a stable go-ethereum release rather than `master`
+-- see `docs/emes_profile.md` §5.4 for why.
 
 ```bash
-mkdir -p kaysentinel_verify && cd kaysentinel_verify
-go mod init kaysentinel/verify
-go get github.com/ethereum/go-ethereum@v1.16.9
-cp ../tracer/kaysentinel_tracer.go .
-go build .
-go vet .
+go build ./emes/... ./tracer/... ./validation/... ./harness/...
+go vet   ./emes/... ./tracer/... ./validation/... ./harness/...
 ```
 
-If `go build`/`go vet` aren't clean, that's a real break against whatever
-go-ethereum version you pinned -- please open an issue with the exact
-version and error.
+Both are clean against `github.com/ethereum/go-ethereum@v1.16.9`.
 
 ## Status
 
-Compiles and vets clean (verified against a go-ethereum checkout during
-development). Not yet wired into a running node or a live-tracer
-registration, and not yet run against a real transaction. See
-`docs/emes_profile.md` §5.5 for the concrete next steps.
+- Compiles and vets clean.
+- Actually run end-to-end against a hand-constructed synthetic transaction
+  (not a real EVM execution): the tracer collected a full EMES-V1 stream
+  including a correctly-correlated `SelfDestructEvent`, Gate 1 passed it,
+  and the harness wrote a real fixture file to disk with readable hex
+  fields and `"type"`-tagged events.
+- Gate 1 was also fed two deliberately broken streams (unclosed frame,
+  non-increasing sequence) and correctly rejected both -- it's a real
+  check, not a stub that always passes.
+- **Not yet done:** registration as a live tracer against a real Geth node,
+  a real transaction trace, `AccountCreatedEvent` correlation, and Gate 2
+  (semantic state-replay verification across clients) -- see
+  `docs/emes_profile.md` §5.7 for the full list.
