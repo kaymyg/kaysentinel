@@ -9,6 +9,9 @@
 > governs. [`validation_vector_spec.md`](./validation_vector_spec.md) defines
 > the frozen v1.0.0 test-vector schema and mutation-event vocabulary used by
 > the conformance vectors in the fixtures repo's `validation_vectors/`.
+> [`ssz_profile.md`](./ssz_profile.md) defines the Layer 2 serialization and
+> merkleization rules, with a real, reproducible worked example and a
+> runnable reference encoder (`../scripts/ssz_reference.py`).
 
 ## 0. System Overview
 

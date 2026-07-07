@@ -101,23 +101,19 @@ Vectors live in the fixtures repo under `validation_vectors/`:
   lists via offsets).
 - **Hash engine:** SHA-256 (standard SSZ `hash_tree_root`).
 
-**Status: not yet computable.** A Layer 2 conformance manifest needs a real
-SSZ encoder to produce `serialized_length` and `expected_root_hash` for each
-vector. No such encoder exists yet (see the implementation roadmap, Phase
-1). Any hash or length value asserted here before that encoder exists would
-be fabricated and indistinguishable from a real, verified value to a reader
-— so this repo does not publish placeholder hashes. Once the SSZ encoder
-lands, run it over each vector in `validation_vectors/` and record the real
-output in `schemas/ssz_v1_conformance_manifest.json` (template below).
+**Status: computable, and computed.** [`scripts/ssz_reference.py`](../scripts/ssz_reference.py)
+is a runnable reference encoder/merkleizer (built on the existing
+`remerkleable` SSZ library, not a from-scratch reimplementation) that
+produces real `serialized_length` and `expected_root_hash` values for every
+vector in `validation_vectors/`. The current values are recorded in
+[`schemas/ssz_v1_conformance_manifest.json`](../schemas/ssz_v1_conformance_manifest.json)
+and are reproducible by anyone: `pip install -r scripts/requirements.txt`,
+then run the script against the fixtures repo's vectors.
 
-```json
-{
-  "profile_id": "SSZ-V1",
-  "profile_target_version": "1.0.0",
-  "vector_targets": [
-    { "vector_id": "KS-ST-001", "serialized_length": null, "expected_root_hash": null },
-    { "vector_id": "KS-LC-001", "serialized_length": null, "expected_root_hash": null },
-    { "vector_id": "KS-OR-001", "serialized_length": null, "expected_root_hash": null }
-  ]
-}
-```
+This closes the "no fabricated hashes" gap for the encoding layer — these
+are real, checkable values, not placeholders. It does **not** mean the
+project has a working extractor: these hashes are computed from the
+hand-authored `expected_normalized_ssr` in each fixture, not from a real
+Geth or Reth execution trace. Whether a real client actually produces that
+`expected_normalized_ssr` in the first place is still open — that's Phase
+2/3 of the implementation roadmap.
