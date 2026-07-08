@@ -20,9 +20,14 @@
 > (`../harness/harness.go`). Wire event types live in `../emes/`, kept
 > separate from the Geth-specific collector so a future Reth/Besu adapter
 > can reuse them. [`raw/transcript/README.md`](../raw/transcript/README.md)
-> documents a lower-level, in-process trace buffer with a deterministic
-> binary hash -- compiled, tested, and with two rounds of real compile-bug
-> fixes recorded for anyone curious what "verified" means in this repo.
+> documents a lower-level, in-process trace buffer (`raw/transcript/`),
+> now on its second design (flat `RawEvent`, not the earlier tagged-union +
+> hash version -- that tradeoff is recorded there), plus
+> `../multiplexer/broadcast.go` (panic-isolating fan-out to multiple hook
+> sinks) and a differential validator
+> (`../validation/normalizer.go`, `../validation/engine.go`). All compiled,
+> vetted, and exercised end-to-end -- see the README for what was actually
+> tested versus what's still an open integration question.
 
 ## 0. System Overview
 
