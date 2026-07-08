@@ -19,7 +19,10 @@
 > (`../validation/gate1.go`) and fixture-writing harness
 > (`../harness/harness.go`). Wire event types live in `../emes/`, kept
 > separate from the Geth-specific collector so a future Reth/Besu adapter
-> can reuse them.
+> can reuse them. [`raw/transcript/README.md`](../raw/transcript/README.md)
+> documents a lower-level, in-process trace buffer with a deterministic
+> binary hash -- compiled, tested, and with two rounds of real compile-bug
+> fixes recorded for anyone curious what "verified" means in this repo.
 
 ## 0. System Overview
 
