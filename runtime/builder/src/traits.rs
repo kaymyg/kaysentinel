@@ -3,15 +3,21 @@ use crate::ir::timeline::Provenance;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReducedTransition<T: Clone + PartialEq> {
-    pub initial: T,
-    pub terminal: T,
-    pub provenance: Provenance,
+    initial: T,
+    terminal: T,
+    provenance: Provenance,
+}
+
+impl<T: Clone + PartialEq> ReducedTransition<T> {
+    pub fn new(initial: T, terminal: T, provenance: Provenance) -> Self {
+        Self { initial, terminal, provenance }
+    }
+    pub fn initial(&self) -> &T { &self.initial }
+    pub fn terminal(&self) -> &T { &self.terminal }
+    pub fn provenance(&self) -> &Provenance { &self.provenance }
 }
 
 pub trait ReducibleTimeline {
     type Value: Clone + PartialEq;
-
-    /// Pure functional reduction of an absolute event vector down into a stable
-    /// single-transition object, guaranteeing O(M) verification complexity where M is history length.
     fn reduce(self) -> Result<ReducedTransition<Self::Value>, TimelineError>;
 }

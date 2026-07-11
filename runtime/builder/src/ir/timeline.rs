@@ -10,12 +10,17 @@ pub struct EventId(pub u64);
 pub struct Provenance(pub BTreeSet<EventId>);
 
 impl Provenance {
-    pub fn new() -> Self {
-        Self(BTreeSet::new())
-    }
-    pub fn record(&mut self, id: EventId) {
-        self.0.insert(id);
-    }
+    pub fn new() -> Self { Self(BTreeSet::new()) }
+    pub fn record(&mut self, id: EventId) { self.0.insert(id); }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum CanonicalKey {
+    Balance { address: [u8; 20] },
+    Nonce { address: [u8; 20] },
+    Code { address: [u8; 20] },
+    Storage { address: [u8; 20], slot: [u8; 32] },
+    Transient { address: [u8; 20], slot: [u8; 32] },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -49,9 +54,7 @@ pub struct Timeline<T: Clone + PartialEq> {
 }
 
 impl<T: Clone + PartialEq> Timeline<T> {
-    pub fn new() -> Self {
-        Self { history: Vec::new() }
-    }
+    pub fn new() -> Self { Self { history: Vec::new() } }
     pub fn push(&mut self, before: T, after: T, event_id: EventId) {
         self.history.push(ObservedTransition { before, after, event_id });
     }
@@ -68,35 +71,24 @@ impl<T: Clone + PartialEq + Copy> ReducibleTimeline for Timeline<T> {
         let mut provenance = Provenance::new();
         let initial = self.history.first().unwrap().before;
         let mut current_after = self.history.first().unwrap().after;
+        let mut last_event_id = self.history.first().unwrap().event_id;
         
-        provenance.record(self.history.first().unwrap().event_id);
+        provenance.record(last_event_id);
 
         for observation in self.history.into_iter().skip(1) {
             if observation.before != current_after {
-                return Err(TimelineError::DiscontinuousLineage);
+                return Err(TimelineError::DiscontinuousLineage {
+                    previous_event: last_event_id,
+                    current_event: observation.event_id,
+                });
             }
             current_after = observation.after;
+            last_event_id = observation.event_id;
             provenance.record(observation.event_id);
         }
 
-        Ok(ReducedTransition {
-            initial,
-            terminal: current_after,
-            provenance,
-        })
+        Ok(ReducedTransition::new(initial, current_after, provenance))
     }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct AccountNode {
-    pub address: [u8; 20],
-    pub lifecycle_history: Vec<ObservedLifecycle>,
-    pub balance_timeline: Option<Timeline<[u8; 32]>>,
-    pub nonce_timeline: Option<Timeline<u64>>,
-    pub code_timeline: Option<Timeline<[u8; 32]>>,
-    pub storage_timelines: BTreeMap<[u8; 32], Timeline<[u8; 32]>>,
-    pub transient_timelines: BTreeMap<[u8; 32], Timeline<[u8; 32]>>,
-    pub logs: Vec<ObservedLog>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -108,12 +100,24 @@ pub struct TransactionMetadata {
     pub transaction_index: u32,
 }
 
+/// RawIr represents completely flat, relational tables grouped by transaction boundaries.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TransactionBucket {
     pub metadata: TransactionMetadata,
-    pub account_nodes: BTreeMap<[u8; 20], AccountNode>,
+    pub state_tables: BTreeMap<CanonicalKey, TimelineVariant>,
+    pub lifecycle_table: BTreeMap<[u8; 20], Vec<ObservedLifecycle>>,
+    pub log_table: BTreeMap<[u8; 20], Vec<ObservedLog>>,
     pub gas_refund_timeline: Option<Timeline<u64>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TimelineIr(pub Vec<TransactionBucket>);
+pub enum TimelineVariant {
+    Balance(Timeline<[u8; 32]>),
+    Nonce(Timeline<u64>),
+    Code(Timeline<[u8; 32]>),
+    Storage(Timeline<[u8; 32]>),
+    Transient(Timeline<[u8; 32]>),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RawIr(pub Vec<TransactionBucket>);
