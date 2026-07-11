@@ -1,9 +1,9 @@
 use std::collections::BTreeMap;
 use kaysentinel_cse::event::{CanonicalSemanticEvent as CseEvent, CsePayload};
 use crate::errors::BuilderError;
-use crate::ir::*;
+use crate::ir::timeline::*;
 
-pub fn process(events: Vec<CseEvent>) -> Result<BuilderIr, BuilderError> {
+pub fn process(events: Vec<CseEvent>) -> Result<TimelineIr, BuilderError> {
     let mut buckets = Vec::new();
     let mut current_bucket: Option<TransactionBucket> = None;
 
@@ -24,7 +24,7 @@ pub fn process(events: Vec<CseEvent>) -> Result<BuilderIr, BuilderError> {
                         transaction_index: event.context.transaction_index,
                     },
                     account_nodes: BTreeMap::new(),
-                    gas_refund_timeline: Timeline::new(),
+                    gas_refund_timeline: None,
                 });
             }
 
@@ -35,15 +35,19 @@ pub fn process(events: Vec<CseEvent>) -> Result<BuilderIr, BuilderError> {
 
             other_payload => {
                 let bucket = current_bucket.as_mut().ok_or(BuilderError::EventOutsideTransaction)?;
-                
+
                 match other_payload {
                     CsePayload::BalanceChanged(p) => {
                         let node = get_or_create_node(&mut bucket.account_nodes, p.address);
-                        node.balance_timeline.push(p.previous_balance, p.current_balance, event_id);
+                        node.balance_timeline
+                            .get_or_insert_with(Timeline::new)
+                            .push(p.previous_balance, p.current_balance, event_id);
                     }
                     CsePayload::NonceUpdated(p) => {
                         let node = get_or_create_node(&mut bucket.account_nodes, p.address);
-                        node.nonce_timeline.push(p.previous_nonce, p.current_nonce, event_id);
+                        node.nonce_timeline
+                            .get_or_insert_with(Timeline::new)
+                            .push(p.previous_nonce, p.current_nonce, event_id);
                     }
                     CsePayload::StorageSlotUpdated(p) => {
                         let node = get_or_create_node(&mut bucket.account_nodes, p.address);
@@ -57,7 +61,9 @@ pub fn process(events: Vec<CseEvent>) -> Result<BuilderIr, BuilderError> {
                     }
                     CsePayload::CodeUpdated(p) => {
                         let node = get_or_create_node(&mut bucket.account_nodes, p.address);
-                        node.code_timeline.push(p.previous_code_hash, p.current_code_hash, event_id);
+                        node.code_timeline
+                            .get_or_insert_with(Timeline::new)
+                            .push(p.previous_code_hash, p.current_code_hash, event_id);
                     }
                     CsePayload::ContractCreated(p) => {
                         let node = get_or_create_node(&mut bucket.account_nodes, p.address);
@@ -78,12 +84,15 @@ pub fn process(events: Vec<CseEvent>) -> Result<BuilderIr, BuilderError> {
                         node.logs.push(ObservedLog { payload: p, event_id });
                     }
                     CsePayload::GasRefundChanged(p) => {
-                        bucket.gas_refund_timeline.push(p.previous_refund, p.current_refund, event_id);
+                        bucket.gas_refund_timeline
+                            .get_or_insert_with(Timeline::new)
+                            .push(p.previous_refund, p.current_refund, event_id);
                     }
-                    CsePayload::AccessListTouched(p) => {
-                        let node = get_or_create_node(&mut bucket.account_nodes, p.address);
-                        node.access_list_timeline.push(p.slot, p.slot, event_id);
-                    }
+                    // NOTE: AccessListTouched is intentionally not recorded here — the refactored
+                    // AccountNode (ir/timeline.rs) dropped the access_list_timeline field, and
+                    // this phase's doc didn't specify a replacement home for it. Flagging this
+                    // as an open gap rather than inventing a place to put it.
+                    CsePayload::AccessListTouched(_) => {}
                     CsePayload::BeginTransaction | CsePayload::EndTransaction => unreachable!(),
                 }
             }
@@ -94,19 +103,18 @@ pub fn process(events: Vec<CseEvent>) -> Result<BuilderIr, BuilderError> {
         return Err(BuilderError::UnexpectedTransactionBoundary);
     }
 
-    Ok(BuilderIr(buckets))
+    Ok(TimelineIr(buckets))
 }
 
 fn get_or_create_node(nodes: &mut BTreeMap<[u8; 20], AccountNode>, address: [u8; 20]) -> &mut AccountNode {
     nodes.entry(address).or_insert_with(|| AccountNode {
         address,
         lifecycle_history: Vec::new(),
-        balance_timeline: Timeline::new(),
-        nonce_timeline: Timeline::new(),
-        code_timeline: Timeline::new(),
+        balance_timeline: None,
+        nonce_timeline: None,
+        code_timeline: None,
         storage_timelines: BTreeMap::new(),
         transient_timelines: BTreeMap::new(),
         logs: Vec::new(),
-        access_list_timeline: Timeline::new(),
     })
 }

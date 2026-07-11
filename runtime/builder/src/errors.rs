@@ -1,11 +1,21 @@
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum TimelineError {
+    EmptyTimeline,
+    DiscontinuousLineage,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum BuilderError {
-    /// A timeline's chronological chain of before/after values did not link up.
-    InvalidSequence,
-    /// A `BeginTransaction` event arrived while a transaction bucket was already open.
-    DuplicateTransactionBoundary,
-    /// An `EndTransaction` event arrived with no open transaction bucket.
-    UnexpectedTransactionBoundary,
-    /// A non-boundary event arrived with no open transaction bucket.
     EventOutsideTransaction,
+    UnexpectedTransactionBoundary,
+    DuplicateTransactionBoundary,
+    InvalidSequence,
+    InvalidLifecycle,
+    TimelineFailure(TimelineError),
+}
+
+impl From<TimelineError> for BuilderError {
+    fn from(err: TimelineError) -> Self {
+        BuilderError::TimelineFailure(err)
+    }
 }
