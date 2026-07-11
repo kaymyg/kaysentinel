@@ -1,0 +1,9 @@
+[package]
+name = "kaysentinel-cse"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+# This crate strictly remains dependency-light to serve as a pure language-agnostic ABI mirror.
+# Only standard architectural primitives are exposed.
