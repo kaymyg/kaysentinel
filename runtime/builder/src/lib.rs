@@ -1,8 +1,8 @@
 //! # Kaysentinel Builder
 //!
 //! Compiles a validated stream of Canonical Semantic Events (CSE) into the
-//! Structural Sufficient Representation (SSR) via a lossless intermediate
-//! representation (IR), timeline reduction, and canonicalization pipeline.
+//! Structural Sufficient Representation (SSR) via a lossless, flat relational
+//! intermediate representation (IR), timeline reduction, and canonicalization.
 
 pub mod errors;
 pub mod ir;
@@ -10,9 +10,9 @@ pub mod traits;
 pub mod partition;
 pub mod reduce;
 
-pub use errors::{BuilderError, TimelineError};
-pub use ir::timeline::{TimelineIr, EventId, Provenance, Timeline};
-pub use ir::reduced::ReducedIr;
+pub use errors::{BuilderError, TimelineError, LifecycleState, LifecycleEvent};
+pub use ir::timeline::{RawIr, EventId, Provenance, Timeline, CanonicalKey, TimelineVariant};
+pub use ir::reduced::{ReducedIr, ReducedTransactionBucket, ReducedVariant};
 pub use traits::{ReducedTransition, ReducibleTimeline};
 pub use partition::process as partition_events;
 pub use reduce::process as reduce_timelines;
