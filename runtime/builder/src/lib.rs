@@ -8,8 +8,11 @@ pub mod errors;
 pub mod ir;
 pub mod traits;
 pub mod partition;
+pub mod reduce;
 
-pub use errors::BuilderError;
-pub use ir::{BuilderIr, EventId, Provenance, Timeline};
+pub use errors::{BuilderError, TimelineError};
+pub use ir::timeline::{TimelineIr, EventId, Provenance, Timeline};
+pub use ir::reduced::ReducedIr;
 pub use traits::{ReducedTransition, ReducibleTimeline};
-pub use partition::process;
+pub use partition::process as partition_events;
+pub use reduce::process as reduce_timelines;

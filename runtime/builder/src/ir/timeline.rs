@@ -1,5 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use kaysentinel_cse::payloads::*;
+use crate::errors::TimelineError;
+use crate::traits::{ReducedTransition, ReducibleTimeline};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct EventId(pub u64);
@@ -16,18 +18,10 @@ impl Provenance {
     }
 }
 
-// --- The Core Abstraction: Pure Fact Recording ---
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ObservedTransition<T: Clone + PartialEq> {
     pub before: T,
     pub after: T,
-    pub event_id: EventId,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ObservedLifecycle {
-    pub payload: CseLifecyclePayload,
     pub event_id: EventId,
 }
 
@@ -38,12 +32,16 @@ pub enum CseLifecyclePayload {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ObservedLifecycle {
+    pub payload: CseLifecyclePayload,
+    pub event_id: EventId,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ObservedLog {
     pub payload: LogEmitted,
     pub event_id: EventId,
 }
-
-// --- Timelines (Lossless Ingestion Targets) ---
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Timeline<T: Clone + PartialEq> {
@@ -59,19 +57,46 @@ impl<T: Clone + PartialEq> Timeline<T> {
     }
 }
 
-// --- The Structured Unoptimized Account Node ---
+impl<T: Clone + PartialEq + Copy> ReducibleTimeline for Timeline<T> {
+    type Value = T;
+
+    fn reduce(self) -> Result<ReducedTransition<Self::Value>, TimelineError> {
+        if self.history.is_empty() {
+            return Err(TimelineError::EmptyTimeline);
+        }
+
+        let mut provenance = Provenance::new();
+        let initial = self.history.first().unwrap().before;
+        let mut current_after = self.history.first().unwrap().after;
+        
+        provenance.record(self.history.first().unwrap().event_id);
+
+        for observation in self.history.into_iter().skip(1) {
+            if observation.before != current_after {
+                return Err(TimelineError::DiscontinuousLineage);
+            }
+            current_after = observation.after;
+            provenance.record(observation.event_id);
+        }
+
+        Ok(ReducedTransition {
+            initial,
+            terminal: current_after,
+            provenance,
+        })
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AccountNode {
     pub address: [u8; 20],
     pub lifecycle_history: Vec<ObservedLifecycle>,
-    pub balance_timeline: Timeline<[u8; 32]>,
-    pub nonce_timeline: Timeline<u64>,
-    pub code_timeline: Timeline<[u8; 32]>,
+    pub balance_timeline: Option<Timeline<[u8; 32]>>,
+    pub nonce_timeline: Option<Timeline<u64>>,
+    pub code_timeline: Option<Timeline<[u8; 32]>>,
     pub storage_timelines: BTreeMap<[u8; 32], Timeline<[u8; 32]>>,
     pub transient_timelines: BTreeMap<[u8; 32], Timeline<[u8; 32]>>,
     pub logs: Vec<ObservedLog>,
-    pub access_list_timeline: Timeline<Option<[u8; 32]>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -87,8 +112,8 @@ pub struct TransactionMetadata {
 pub struct TransactionBucket {
     pub metadata: TransactionMetadata,
     pub account_nodes: BTreeMap<[u8; 20], AccountNode>,
-    pub gas_refund_timeline: Timeline<u64>,
+    pub gas_refund_timeline: Option<Timeline<u64>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BuilderIr(pub Vec<TransactionBucket>);
+pub struct TimelineIr(pub Vec<TransactionBucket>);
