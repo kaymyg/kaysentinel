@@ -1,5 +1,6 @@
 pub mod canonical;
 pub mod canonicalize;
+pub mod certificate;
 pub mod diagnostics;
 pub mod keys;
 pub mod resolve;

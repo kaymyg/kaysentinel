@@ -12,9 +12,13 @@ pub mod reduce;
 pub mod lifecycle;
 
 pub use errors::{BuilderError, TimelineError, LifecycleState, LifecycleEvent};
-pub use ir::timeline::{RawIr, EventId, Provenance, Timeline, CanonicalKey, TimelineVariant};
+pub use ir::timeline::{RawIr, EventId, Provenance, TraceProvenance, Timeline, CanonicalKey, TimelineVariant};
 pub use ir::reduced::{ReducedIr, ReducedTransactionBucket, ReducedVariant};
 pub use traits::{ReducedTransition, ReducibleTimeline};
 pub use partition::process as partition_events;
 pub use reduce::process as reduce_timelines;
 pub use lifecycle::process as resolve_lifecycles;
+pub use lifecycle::certificate::{
+    CanonicalAccountCertificate, GenerationResolutionError, VerifiedGeneration,
+    resolve_generation_for_address,
+};
