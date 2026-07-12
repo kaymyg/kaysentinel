@@ -19,6 +19,7 @@ pub use partition::process as partition_events;
 pub use reduce::process as reduce_timelines;
 pub use lifecycle::process as resolve_lifecycles;
 pub use lifecycle::certificate::{
-    CanonicalAccountCertificate, GenerationResolutionError, VerifiedGeneration,
-    resolve_generation_for_address,
+    AccountSnapshotSource, CanonicalAccountCertificate, GenerationResolutionError,
+    ResolvedAccountSnapshot, StorageRootState, VerifiedGeneration,
+    build_canonical_certificates, resolve_generation_for_address,
 };
