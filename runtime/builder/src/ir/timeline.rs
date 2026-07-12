@@ -6,6 +6,44 @@ use crate::traits::{ReducedTransition, ReducibleTimeline};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct EventId(pub u64);
 
+/// A richer execution coordinate for lifecycle events than a bare `EventId`.
+///
+/// THEOREM 0.1 (Temporal Uniqueness): every semantic mutation emitted by the tracer
+/// is assigned exactly one unique `trace_ordinal`, and no two events share the same
+/// value. Equality and ordering are therefore defined solely in terms of `trace_ordinal`;
+/// the remaining fields are descriptive structural metadata only.
+#[derive(Debug, Clone, Copy, Hash, Default)]
+pub struct TraceProvenance {
+    pub trace_ordinal: u64,
+    pub tx_index: u64,
+    pub frame_id: usize,
+    pub call_depth: usize,
+    pub frame_ordinal: u32,
+}
+
+impl PartialEq for TraceProvenance {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.trace_ordinal == other.trace_ordinal
+    }
+}
+
+impl Eq for TraceProvenance {}
+
+impl Ord for TraceProvenance {
+    #[inline]
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.trace_ordinal.cmp(&other.trace_ordinal)
+    }
+}
+
+impl PartialOrd for TraceProvenance {
+    #[inline]
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Provenance(pub BTreeSet<EventId>);
 
@@ -40,6 +78,7 @@ pub enum CseLifecyclePayload {
 pub struct ObservedLifecycle {
     pub payload: CseLifecyclePayload,
     pub event_id: EventId,
+    pub trace_provenance: TraceProvenance,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

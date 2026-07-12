@@ -1,5 +1,5 @@
 use std::collections::BTreeMap;
-use crate::ir::timeline::{CseLifecyclePayload, EventId, ObservedLifecycle};
+use crate::ir::timeline::{CseLifecyclePayload, ObservedLifecycle};
 use crate::lifecycle::diagnostics::{Diagnostic, InvariantReport, LifecycleViolation, PassOutput, Severity};
 use crate::lifecycle::semantic::{AccountPreStateRelation, GenerationRelation, SemanticIr};
 
@@ -29,8 +29,8 @@ pub fn resolve(
         let mut current_gen_id: u32 = 0;
         let mut begin = observations
             .first()
-            .map(|o| o.event_id)
-            .unwrap_or(EventId(0));
+            .map(|o| o.trace_provenance)
+            .unwrap_or_default();
         let mut gen_open = true;
 
         for obs in observations {
@@ -44,7 +44,7 @@ pub fn resolve(
                     if existed_before {
                         diagnostics.push(Diagnostic {
                             severity: Severity::Error,
-                            location: obs.event_id,
+                            location: obs.trace_provenance,
                             violation: LifecycleViolation::Collision {
                                 address: *address,
                                 generation_id: current_gen_id,
@@ -55,7 +55,7 @@ pub fn resolve(
                             ),
                         });
                     }
-                    begin = obs.event_id;
+                    begin = obs.trace_provenance;
                     gen_open = true;
                 }
                 CseLifecyclePayload::Destroyed(_) => {
@@ -63,10 +63,10 @@ pub fn resolve(
                         address: *address,
                         generation_id: current_gen_id,
                         begin,
-                        end: Some(obs.event_id),
+                        end: Some(obs.trace_provenance),
                     });
                     current_gen_id += 1;
-                    begin = obs.event_id;
+                    begin = obs.trace_provenance;
                     gen_open = false;
                 }
             }

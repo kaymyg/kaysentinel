@@ -1,4 +1,5 @@
-use crate::ir::timeline::EventId;
+use crate::ir::timeline::TraceProvenance;
+use crate::lifecycle::keys::GenerationKey;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Severity {
@@ -10,12 +11,17 @@ pub enum Severity {
 pub enum LifecycleViolation {
     /// A creation was observed on an address while a prior generation was still open.
     Collision { address: [u8; 20], generation_id: u32 },
+    DuplicateKey(GenerationKey),
+    IntegrityBreach(GenerationKey),
+    IntervalInvalid(GenerationKey),
+    OverlapDetected([u8; 20]),
+    OrderingBreach,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Diagnostic {
     pub severity: Severity,
-    pub location: EventId,
+    pub location: TraceProvenance,
     pub violation: LifecycleViolation,
     pub explanation: String,
 }

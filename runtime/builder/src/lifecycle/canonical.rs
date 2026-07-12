@@ -1,4 +1,4 @@
-use crate::ir::timeline::EventId;
+use crate::ir::timeline::TraceProvenance;
 use crate::lifecycle::keys::GenerationKey;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -10,12 +10,25 @@ pub struct CanonicalPreState {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CanonicalGeneration {
     pub key: GenerationKey,
-    pub begin: EventId,
-    pub end: Option<EventId>,
+    pub begin: TraceProvenance,
+    pub end: Option<TraceProvenance>,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+/// A balance fact scoped to a specific identity generation, rather than to a bare
+/// address. NOTE: nothing in the pipeline currently derives these from the real
+/// `state_table` (which is still flat, address-keyed, generation-agnostic) — see
+/// `canonicalize.rs` for how they're accepted, and the phase writeup for why the
+/// address -> generation cross-referencing logic isn't wired up yet.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CanonicalBalance {
+    pub key: GenerationKey,
+    pub value: [u64; 4],
+    pub location: TraceProvenance,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct CanonicalSemanticIr {
     pub pre_states: Vec<CanonicalPreState>,
     pub generations: Vec<CanonicalGeneration>,
+    pub balances: Vec<CanonicalBalance>,
 }
