@@ -84,6 +84,7 @@ pub fn process(events: Vec<CseEvent>) -> Result<RawIr, BuilderError> {
                             .push(ObservedLifecycle {
                                 payload: CseLifecyclePayload::Created(p),
                                 event_id,
+                                trace_provenance: trace_provenance_from(&event.context),
                             });
                     }
                     CsePayload::ContractDestroyed(p) => {
@@ -91,6 +92,7 @@ pub fn process(events: Vec<CseEvent>) -> Result<RawIr, BuilderError> {
                             .push(ObservedLifecycle {
                                 payload: CseLifecyclePayload::Destroyed(p),
                                 event_id,
+                                trace_provenance: trace_provenance_from(&event.context),
                             });
                     }
                     CsePayload::LogEmitted(p) => {
@@ -115,4 +117,19 @@ pub fn process(events: Vec<CseEvent>) -> Result<RawIr, BuilderError> {
     }
 
     Ok(RawIr(buckets))
+}
+
+/// Maps a CSE `ExecutionContext` onto the richer lifecycle `TraceProvenance` coordinate.
+///
+/// NOTE: `frame_ordinal` (an ordinal position *within* a call frame) has no source in
+/// the current CSE ABI's `ExecutionContext` — it's set to 0 as an honest placeholder,
+/// not a real value, until the ABI is extended to carry one.
+fn trace_provenance_from(ctx: &kaysentinel_cse::context::ExecutionContext) -> TraceProvenance {
+    TraceProvenance {
+        trace_ordinal: ctx.sequence_number,
+        tx_index: ctx.transaction_index as u64,
+        frame_id: ctx.call_frame_id as usize,
+        call_depth: ctx.call_depth as usize,
+        frame_ordinal: 0,
+    }
 }

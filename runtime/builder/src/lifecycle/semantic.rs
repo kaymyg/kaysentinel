@@ -1,4 +1,4 @@
-use crate::ir::timeline::EventId;
+use crate::ir::timeline::TraceProvenance;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AccountPreStateRelation {
@@ -10,8 +10,8 @@ pub struct AccountPreStateRelation {
 pub struct GenerationRelation {
     pub address: [u8; 20],
     pub generation_id: u32,
-    pub begin: EventId,
-    pub end: Option<EventId>,
+    pub begin: TraceProvenance,
+    pub end: Option<TraceProvenance>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
