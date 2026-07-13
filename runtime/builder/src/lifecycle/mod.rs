@@ -2,6 +2,7 @@ pub mod canonical;
 pub mod canonicalize;
 pub mod certificate;
 pub mod diagnostics;
+pub mod hydration;
 pub mod keys;
 pub mod resolve;
 pub mod semantic;

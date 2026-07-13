@@ -23,3 +23,7 @@ pub use lifecycle::certificate::{
     ResolvedAccountSnapshot, StorageRootState, VerifiedGeneration,
     build_canonical_certificates, resolve_generation_for_address,
 };
+pub use lifecycle::hydration::{
+    BackendError, CertificateAssemblyError, DerivationError, HydratedAccountState,
+    StorageDerivationError, StorageRootDeriver, assemble_certificates, hydrate_accounts,
+};
