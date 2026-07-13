@@ -1,0 +1,30 @@
+[
+  {
+    "name": "candidate_vector_1",
+    "domain": "KAY_TRIE_LEAF",
+    "canonical_hex": "01020304",
+    "digest_hex": "80522501585b8ebf1831439e57add0002d22fe75521120104b000cc707b5a34a",
+    "status": "candidate"
+  },
+  {
+    "name": "candidate_vector_2",
+    "domain": "KAY_TRIE_BRANCH",
+    "canonical_hex": "01020304",
+    "digest_hex": "51614b8a4a5f5a2b5b7b858e626cd19b710d670ebad2e0b9b296bf282b4bfe93",
+    "status": "candidate"
+  },
+  {
+    "name": "candidate_vector_3",
+    "domain": "KAY_LIFE_CERT",
+    "canonical_hex": "01020304",
+    "digest_hex": "59fd735ed0c0923c4316ad197223aed69b6667f6a00a228aae1638a521d1f62f",
+    "status": "candidate"
+  },
+  {
+    "name": "candidate_vector_4",
+    "domain": "KAY_SSR_ROOT",
+    "canonical_hex": "01020304",
+    "digest_hex": "1007c1368120e75ff7f8a47d6933f1440e1a6e0fd1b5e10f8721329dd5d47617",
+    "status": "candidate"
+  }
+]
