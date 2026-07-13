@@ -80,6 +80,9 @@ version = "0.1.0"
 [[package]]
 name = "kaysentinel-ssz"
 version = "0.1.0"
+dependencies = [
+ "kaysentinel-hash",
+]
 
 [[package]]
 name = "kaysentinel-verify"
