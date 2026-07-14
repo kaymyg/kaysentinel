@@ -2,6 +2,7 @@
 members = [
     "cse",
     "builder",
+    "protocol",
     "ssr",
     "ssz",
     "hash",

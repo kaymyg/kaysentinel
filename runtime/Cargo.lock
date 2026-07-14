@@ -74,6 +74,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "kaysentinel-protocol"
+version = "0.1.0"
+
+[[package]]
 name = "kaysentinel-ssr"
 version = "0.1.0"
 
