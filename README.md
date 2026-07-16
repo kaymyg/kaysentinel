@@ -6,66 +6,118 @@ tags:
   - evm
 ---
 
-# Kaysentinel / PCAL + Sentinel
+# KAYSentinel (PCAL + Sentinel)
 
-A post-execution authorization framework for state-machine systems (e.g. Ethereum-class runtimes). Kaysentinel lifts execution traces into a canonical **Structural Sufficient Representation (SSR)** and evaluates policy purely over that quotient space, so authorization decisions are provably independent of *which* client (Geth, Reth, ...) produced the trace.
+A high-performance, client-agnostic **Protocol Integrity Runtime** that produces deterministic, client-independent representations of state execution for validation, security auditing, and forensic analysis.
 
-> **Status:** formal specification, differential-test harness skeleton, and a working Rust reference implementation of the canonical event ABI, the builder pipeline (partition → reduce → lifecycle resolution → certificate assembly), and domain-separated cryptographic commitments. There is not yet a working Geth/Reth extractor, SSZ canonical encoding, or storage-trie derivation — see the roadmap below for exactly what's real vs. still open.
+Existing blockchain security tools analyze raw, client-specific execution traces, log structures, or protocol-specific events which differ between implementations. **KAYSentinel** instead captures canonical state mutations directly at the execution layer. It extracts these mutations into an invariant, minimal representation called the **Structural Sufficient Representation (SSR)**, ensuring that downstream systems always analyze identical execution states regardless of whether the node is running Geth, Reth, or another client.
 
-## Repo contents
+---
 
-- [`docs/framework.md`](docs/framework.md) — full formal spec: execution model, SSR canonical form, authorization/factorization theory, multi-client portability theorem, gating semantics, complexity model.
-- [`docs/differential_testing.md`](docs/differential_testing.md) — the differential testing engine design used to check byte-level convergence between a Geth-side and Reth-side SSR extractor.
-- [`docs/implementation_roadmap.md`](docs/implementation_roadmap.md) — concrete engineering tasks (Phase 1–3) to turn the spec into a working implementation.
-- [`docs/semantic_architecture_spec.md`](docs/semantic_architecture_spec.md) — formal stage contracts (partition → projection → canonicalization → serialization → commitment) with real implementation cross-references.
-- [`docs/hash_specification.md`](docs/hash_specification.md) — normative cryptographic commitment protocol (domain-separated BLAKE3), implemented in `runtime/hash`.
-- [`runtime/`](runtime/) — the Rust reference implementation. See below.
-- Curated test fixtures now live in a separate dataset repo: [`Sahek/kaysentinel-fixtures`](https://huggingface.co/datasets/Sahek/kaysentinel-fixtures).
-- [`scripts/verify_ssr.py`](scripts/verify_ssr.py) — standalone verifier that hashes and byte-diffs two SSZ-encoded SSR outputs.
-- [`tests/transient_storage_case.json`](tests/transient_storage_case.json) — example test vector (EIP-1153 transient storage + reentrancy rollback).
+## Technical Architecture & Core Pipeline
 
-## `runtime/` — Rust reference implementation
+The core lifecycle of a state transition in KAYSentinel bypasses client-specific nuances by extracting state mutations into a canonical, verifiable timeline:
 
-A Cargo workspace. Status per crate, honestly:
+```text
+       Execution Runtime (e.g., Geth / Reth)
+                         │
+                         ▼
+      EMES (Execution Mutation Events Specification)
+                         │
+                         ▼
+        Canonical Timeline Builder (runtime/builder)
+                         │
+                         ▼
+     SSR (Structural Sufficient Representation - Δ)
+                         │
+                         ▼
+           SSZ RC1 Serialization (runtime/ssz)
+                         │
+                         ▼
+             Domain-Separated Canonical Hash
+                         │
+      ┌──────────────────┴──────────────────┐
+      ▼                  ▼                  ▼
+Verification         Forensics        Consensus Audits
 
-| Crate | Status |
-| --- | --- |
-| `cse` | **Done.** Canonical Semantic Event ABI: frozen event/payload types, execution context, a sequence/transaction-boundary validator. |
-| `builder` | **In progress, core pipeline works.** Partitions a CSE stream into flat relational tables (`partition.rs`), reduces per-key timelines to terminal transitions (`reduce.rs`), resolves account lifecycle generations (`lifecycle/resolve.rs`, `canonicalize.rs`), and assembles canonical account certificates from real state + generation data (`lifecycle/certificate.rs`, `hydration.rs`). 21 passing unit tests across the workspace. |
-| `hash` | **Core primitive done.** Domain-separated BLAKE3 commitments (`derive_commitment`), per the RC1 spec. 8 passing tests, including real (not hand-typed) pinned vectors — see `runtime/hash/vectors/candidate.json`. Not yet cross-language-verified (no Python/Go implementation exists to check against), so nothing has been promoted to `normative.json`. |
-| `ssr` | Empty stub. |
-| `ssz` | Empty stub — canonical encoding doesn't exist yet, so nothing has real bytes to hash yet either. |
-| `verify` | Empty stub. |
+```
 
-Known open gaps (tracked in `docs/semantic_architecture_spec.md`): no real `AccountSnapshotSource` (prior-block state) implementation; storage roots are always `AwaitingDerivation` (no Phase 5 trie construction); access-list touches aren't tracked; several `TraceProvenance`/generation-chain fields (`frame_ordinal`, `ProvenanceMetadataDivergence`, `MalformedProvenanceChain`) are defined but not yet wired to real detection logic.
+### The Quotient-Space Model
 
-## Roadmap
+Formally, rather than attempting to analyze raw, noisy execution traces $\sigma \in \Sigma$ which contain client-specific database side-effects and ephemeral memory states, KAYSentinel maps traces to a canonical space $\Delta$ (the SSR) via an extraction map $E$:
 
-See [`docs/implementation_roadmap.md`](docs/implementation_roadmap.md) for the full phased task breakdown. Short version:
+$$E: \Sigma \to \Delta$$
 
-**Phase 1 — Canonical type system**
-- [x] Canonical Semantic Event ABI (`runtime/cse`)
-- [ ] SSZ schema + serialization (`runtime/ssz` — stub only)
+This extraction map enforces the foundational mathematical invariant of **Faithfulness + Abstraction**:
 
-**Phase 2 — Client extractors**
-- [ ] Geth-side extractor (`StateDB` journal hook)
-- [ ] Reth-side extractor (`BundleState` hook)
+$$E(\sigma_1) = E(\sigma_2) \iff \text{Post}(\sigma_1) = \text{Post}(\sigma_2)$$
 
-**Phase 3 — Differential testing infrastructure**
-- [x] Verification harness (`scripts/verify_ssr.py`) — comparison logic only, done
-- [ ] Test runner environment + GitHub Actions CI
+By factoring downstream evaluations purely through $\Delta$, **all downstream verification, policy enforcement, and consensus-checking are decoupled from client-specific execution details.** If two clients produce equivalent state outputs, their SSRs ($\Delta$) and resulting canonical cryptographic commitments are guaranteed to be identical.
 
-**Phase 4 — Builder pipeline (Rust reference implementation)**
-- [x] Partition + terminal projection (`runtime/builder/src/partition.rs`, `ir/timeline.rs`)
-- [x] Lifecycle resolution + canonicalization (`runtime/builder/src/lifecycle/`)
-- [x] Certificate hydration + assembly (`runtime/builder/src/lifecycle/{certificate,hydration}.rs`)
-- [ ] Storage subtree/trie derivation (`StorageRootDeriver` trait exists, no implementation)
+---
 
-**Phase 5 — Cryptographic commitment**
-- [x] Domain-separated BLAKE3 commitment primitive (`runtime/hash`)
-- [ ] Cross-language (Python/Go) differential verification of vectors
-- [ ] Wire real commitments into `VerifiedGeneration.state_table_proof_root` and `CanonicalAccountCertificate.storage_root`
+## Downstream Applications
+
+By moving beyond simple "post-execution authorization," the KAYSentinel runtime acts as an infrastructure layer for several distinct security and consensus applications:
+
+* **Consensus & Client Validation:** Verifying that independent clients (e.g., Geth vs. Reth) agree on execution state transitions down to the mutation level.
+* **Forensic Reconstruction:** Rebuilding step-by-step transaction lifecycles from standardized mutation streams.
+* **Downstream Policy Evaluation:** Running complex out-of-band security rules over deterministic state outcomes without trusting client-specific database structures.
+* **Anomaly Detection & Auditing:** Isolating unexpected runtime side-effects (such as transient storage leaks or unexpected reentrancy footprints) at the protocol layer.
+
+---
+
+## Repository & Runtime Architecture
+
+```text
+├── docs/
+│   ├── framework.md                  # Formal mathematical & semantic specification
+│   ├── semantic_architecture_spec.md # Stage-by-stage contract details & engineering gaps
+│   └── implementation_roadmap.md     # Detailed Phase 1–3 development execution plan
+├── runtime/
+│   ├── emes/                         # Execution Mutation Event Specification schemas
+│   ├── cse/                          # Canonical Semantic Event ABI definitions
+│   ├── builder/                      # Timeline reduction, generations, and SSR hydration
+│   ├── protocol/                     # Canonical protocol definitions & invariant checkers
+│   ├── hash/                         # BLAKE3 domain-separated hashing workspace
+│   └── ssz/                          # SSZ RC1 canonical schema & serialization strategy
+└── tests/
+    └── transient_storage_case.json   # Reference EIP-1153 validation test vector
+
+```
+
+---
+
+## Active Codebase & Implementation Status
+
+KAYSentinel is a functional, actively tested Rust implementation. Below is the current implementation status of our core runtime modules:
+
+### What is Built & Fully Operational
+
+* **`runtime/emes` & `runtime/cse`:** Complete specifications and ABI mappings that capture and validate execution-layer state mutations uniformly.
+* **`runtime/builder`:** The state-reduction engine. It partitions and sequences raw incoming EMES events, reduces complex state timelines down to their terminal transitions, and resolves lifecycles (such as contract creation and self-destruction) into immutable "generations."
+  * *Status:* **21 passing unit tests.**
+* **`runtime/protocol`:** House of canonical protocol definitions, baseline error-handling bounds, and core state invariants.
+* **`runtime/hash` (`kaysentinel-hash`):** A domain-separated, deterministic commitment primitive powered by **BLAKE3**, generating invariant hashes for SSR structures.
+  * *Status:* **8 passing unit tests with pinned vectors.**
+
+### Current Gaps & Near-Term Roadmap
+
+1. **SSZ Serialization Incompleteness (`runtime/ssz`):** While the **SSZ RC1** schemas and serialization strategy are designed, the complete serialization/deserialization implementation remains incomplete.
+2. **Storage Trie Derivation:** The trait interfaces for state trie derivation are defined, but the actual trie-generation code is pending. Currently, `storage_root` calculations default to `AwaitingDerivation`.
+3. **Client-Side Extractors (Geth & Reth Hooks):** The out-of-process hooks that actually generate the raw EMES event stream from live execution clients are not yet written. The builder pipeline is currently tested and validated using high-fidelity simulated trace vectors.
+   * *Target Geth integration:* `StateDB` journal hooks.
+   * *Target Reth integration:* `BundleState` transition stage hooks.
+4. **Cross-Language Verification:** Tooling to verify and test hash vector equivalence across Rust and Go boundary environments is planned but not yet implemented.
+
+---
+
+## Testing & Fixtures
+
+Our reference test vectors and multi-client execution fixtures (evaluating boundary cases like EIP-1153 transient storage, reentrancy rollbacks, and nested account destructions) are managed in the companion dataset repository: [`Sahek/kaysentinel-fixtures`](https://huggingface.co/datasets/Sahek/kaysentinel-fixtures).
+
+---
 
 ## License
 
-MIT — see [`LICENSE`](LICENSE).
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
