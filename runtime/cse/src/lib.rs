@@ -15,6 +15,6 @@ pub mod validator;
 pub use version::ABI_VERSION;
 pub use errors::ValidationError;
 pub use traits::{Versioned, Validate, Identifiable};
-pub use context::ExecutionContext;
+pub use context::{ExecutionContext, NormativeContext, ProvisionalContext, TraceContext};
 pub use event::{CanonicalSemanticEvent, CsePayload, CseVersion};
 pub use validator::CseValidator;

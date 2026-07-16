@@ -24,7 +24,7 @@ pub enum CsePayload {
     AccessListTouched(AccessListTouched),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct CanonicalSemanticEvent {
     pub version: CseVersion,
     pub context: ExecutionContext,
