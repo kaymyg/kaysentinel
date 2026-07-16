@@ -20,10 +20,10 @@ impl CseValidator {
         event.validate()?;
 
         // 2. Continuous sequence assertion
-        if event.context.sequence_number != self.expected_sequence {
+        if event.context.normative.sequence_number != self.expected_sequence {
             return Err(ValidationError::SequenceBreakage {
                 expected: self.expected_sequence,
-                found: event.context.sequence_number,
+                found: event.context.normative.sequence_number,
             });
         }
 

@@ -8,7 +8,7 @@ pub fn process(events: Vec<CseEvent>) -> Result<RawIr, BuilderError> {
     let mut current_bucket: Option<TransactionBucket> = None;
 
     for event in events {
-        let event_id = EventId(event.context.sequence_number);
+        let event_id = EventId(event.context.normative.sequence_number);
 
         match event.payload {
             CsePayload::BeginTransaction => {
@@ -17,11 +17,11 @@ pub fn process(events: Vec<CseEvent>) -> Result<RawIr, BuilderError> {
                 }
                 current_bucket = Some(TransactionBucket {
                     metadata: TransactionMetadata {
-                        chain_id: event.context.chain_id,
-                        block_number: event.context.block_number,
-                        block_hash: event.context.block_hash,
-                        transaction_hash: event.context.transaction_hash,
-                        transaction_index: event.context.transaction_index,
+                        chain_id: event.context.provisional.chain_id,
+                        block_number: event.context.provisional.block_number,
+                        block_hash: event.context.provisional.block_hash,
+                        transaction_hash: event.context.provisional.transaction_hash,
+                        transaction_index: event.context.provisional.transaction_index,
                     },
                     state_tables: BTreeMap::new(),
                     lifecycle_table: BTreeMap::new(),
@@ -126,10 +126,10 @@ pub fn process(events: Vec<CseEvent>) -> Result<RawIr, BuilderError> {
 /// not a real value, until the ABI is extended to carry one.
 fn trace_provenance_from(ctx: &kaysentinel_cse::context::ExecutionContext) -> TraceProvenance {
     TraceProvenance {
-        trace_ordinal: ctx.sequence_number,
-        tx_index: ctx.transaction_index as u64,
-        frame_id: ctx.call_frame_id as usize,
-        call_depth: ctx.call_depth as usize,
+        trace_ordinal: ctx.normative.sequence_number,
+        tx_index: ctx.provisional.transaction_index as u64,
+        frame_id: ctx.trace.call_frame_id as usize,
+        call_depth: ctx.trace.call_depth as usize,
         frame_ordinal: 0,
     }
 }
