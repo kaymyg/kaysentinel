@@ -6,3 +6,4 @@ license.workspace = true
 
 [dependencies]
 kaysentinel-hash = { path = "../hash" }
+kaysentinel-builder = { path = "../builder" }
