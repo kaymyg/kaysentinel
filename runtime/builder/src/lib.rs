@@ -27,3 +27,4 @@ pub use lifecycle::hydration::{
     BackendError, CertificateAssemblyError, DerivationError, HydratedAccountState,
     StorageDerivationError, StorageRootDeriver, assemble_certificates, hydrate_accounts,
 };
+pub use lifecycle::storage_root::{SimpleStorageRootDeriver, resolve_storage_roots};

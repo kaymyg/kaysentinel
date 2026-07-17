@@ -220,6 +220,67 @@ mod tests {
         );
     }
 
+    /// The actual payoff of this phase: proves that a certificate produced by
+    /// the real pipeline, once its storage root is resolved, no longer hits
+    /// `UnresolvedStorageRoot` — closing the gap flagged when PR3 first shipped
+    /// (every real certificate hit that error, since nothing ever produced
+    /// `Verified` before this phase existed).
+    #[test]
+    fn full_vertical_slice_resolved_certificate_commits_successfully() {
+        use kaysentinel_builder::{SimpleStorageRootDeriver, resolve_storage_roots};
+        use kaysentinel_builder::lifecycle::certificate::{
+            AccountSnapshotSource, GenerationResolutionError, ResolvedAccountSnapshot, VerifiedGeneration,
+            build_canonical_certificates,
+        };
+        use kaysentinel_builder::lifecycle::keys::GenerationKey;
+        use kaysentinel_builder::ir::timeline::CanonicalKey;
+        use kaysentinel_builder::ir::reduced::ReducedVariant;
+
+        struct NullSnapshotSource;
+        impl AccountSnapshotSource for NullSnapshotSource {
+            fn resolve_identity_generation(&self, address: [u8; 20]) -> Result<VerifiedGeneration, GenerationResolutionError> {
+                Ok(VerifiedGeneration { key: GenerationKey { address, generation_id: 0 }, state_table_proof_root: [0u8; 32] })
+            }
+            fn recover_account_snapshot(&self, _address: [u8; 20]) -> Result<ResolvedAccountSnapshot, GenerationResolutionError> {
+                Ok(ResolvedAccountSnapshot { nonce: 0, balance: [0u8; 32], code_hash: [0u8; 32] })
+            }
+        }
+
+        let address = [0x55u8; 20];
+        let mut state_table = BTreeMap::new();
+        state_table.insert(
+            CanonicalKey::Storage { address, slot: [1u8; 32] },
+            ReducedVariant::Storage(kaysentinel_builder::ReducedTransition::new(
+                [0u8; 32],
+                [2u8; 32],
+                kaysentinel_builder::Provenance::new(),
+            )),
+        );
+
+        let generations = vec![kaysentinel_builder::lifecycle::canonical::CanonicalGeneration {
+            key: GenerationKey { address, generation_id: 0 },
+            begin: kaysentinel_builder::ir::timeline::TraceProvenance::default(),
+            end: None,
+        }];
+
+        // Before this phase: build_canonical_certificates alone always leaves
+        // storage_root == AwaitingDerivation, and every commit_root() call
+        // below would fail with UnresolvedStorageRoot.
+        let mut certs = build_canonical_certificates(&state_table, &generations, &NullSnapshotSource).unwrap();
+        assert!(certs.values().next().unwrap().commit_root().is_err());
+
+        // After: resolve_storage_roots closes the gap.
+        resolve_storage_roots(&mut certs, &state_table, &SimpleStorageRootDeriver).unwrap();
+
+        let cert = certs.get(&address).unwrap();
+        let encoded = cert.ssz_encode().unwrap();
+        let commitment = cert.commit_root().unwrap();
+
+        assert_eq!(encoded.len(), 180);
+        // Deterministic: re-deriving the same certificate produces the same commitment.
+        assert_eq!(commitment, cert.commit_root().unwrap());
+    }
+
     fn hex_encode(bytes: &[u8]) -> String {
         bytes.iter().map(|b| format!("{:02x}", b)).collect()
     }

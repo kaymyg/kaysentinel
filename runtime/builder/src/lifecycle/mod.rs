@@ -6,6 +6,7 @@ pub mod hydration;
 pub mod keys;
 pub mod resolve;
 pub mod semantic;
+pub mod storage_root;
 
 use std::collections::BTreeMap;
 
