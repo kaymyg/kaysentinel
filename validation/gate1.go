@@ -60,6 +60,14 @@ func VerifyGate1Invariants(stream []emes.Event) error {
 	var txOpen bool
 	frameStack := make([]uint64, 0, 8)
 
+	// Invariant T1 (docs/emes/003-validation-invariants.md) state, reset per
+	// transaction: how many times this transaction pushed a frame onto an
+	// empty stack (a genuine root frame -- including a rejected "root again"
+	// re-entry after the stack already drained once), and the Reverted value
+	// the root frame's own FrameExitEvent carried.
+	var rootFrameCount int
+	var rootFrameReverted bool
+
 	for i, e := range stream {
 		seq := e.SequenceNum()
 		if seqInitialized && seq <= prevSeq {
@@ -75,6 +83,8 @@ func VerifyGate1Invariants(stream []emes.Event) error {
 			}
 			txOpen = true
 			frameStack = frameStack[:0]
+			rootFrameCount = 0
+			rootFrameReverted = false
 
 		case *emes.TransactionEndEvent:
 			if !txOpen {
@@ -82,6 +92,19 @@ func VerifyGate1Invariants(stream []emes.Event) error {
 			}
 			if len(frameStack) != 0 {
 				return &Gate1Error{Index: i, Rule: "frame-balance", Msg: fmt.Sprintf("transaction ended with %d unclosed frame(s)", len(frameStack))}
+			}
+			// Invariant T1 (docs/emes/003-validation-invariants.md): only
+			// applies if this transaction had a root frame at all. A
+			// zero-frame transaction (e.g. a pre-execution validation
+			// failure such as insufficient balance or bad nonce, verified
+			// against go-ethereum's core/state_transition.go) is outside
+			// T1's domain entirely -- it is not a violation for one not to
+			// exist.
+			if rootFrameCount > 1 {
+				return &Gate1Error{Index: i, Rule: "t1-consistency", Msg: fmt.Sprintf("transaction contains %d root frames; exactly one is required when any root frame is present", rootFrameCount)}
+			}
+			if rootFrameCount == 1 && ev.Reverted != rootFrameReverted {
+				return &Gate1Error{Index: i, Rule: "t1-consistency", Msg: fmt.Sprintf("TransactionEndEvent.Reverted (%v) does not match root FrameExitEvent.Reverted (%v)", ev.Reverted, rootFrameReverted)}
 			}
 			txOpen = false
 
@@ -93,6 +116,7 @@ func VerifyGate1Invariants(stream []emes.Event) error {
 				if ev.ParentFrameID != ^uint64(0) {
 					return &Gate1Error{Index: i, Rule: "frame-topology", Msg: "FrameID 0's ParentFrameID must be the 0xFFFF...FFFF sentinel"}
 				}
+				rootFrameCount++
 			} else if ev.ParentFrameID != frameStack[len(frameStack)-1] {
 				return &Gate1Error{Index: i, Rule: "frame-topology", Msg: "ParentFrameID does not match the currently open parent frame"}
 			}
@@ -108,6 +132,11 @@ func VerifyGate1Invariants(stream []emes.Event) error {
 			top := frameStack[len(frameStack)-1]
 			if top != ev.FrameID {
 				return &Gate1Error{Index: i, Rule: "frame-balance", Msg: fmt.Sprintf("FrameExitEvent for frame %d does not match innermost open frame %d", ev.FrameID, top)}
+			}
+			if len(frameStack) == 1 {
+				// This exit drains the stack back to empty -- it's closing
+				// the root frame this transaction most recently opened.
+				rootFrameReverted = ev.Reverted
 			}
 			frameStack = frameStack[:len(frameStack)-1]
 		}
