@@ -8,3 +8,6 @@ license.workspace = true
 kaysentinel-hash = { path = "../hash" }
 kaysentinel-cse = { path = "../cse" }
 kaysentinel-builder = { path = "../builder" }
+
+[dev-dependencies]
+kaysentinel-bridge = { path = "../bridge" }
