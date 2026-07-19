@@ -24,6 +24,7 @@ pub enum SszError {
 }
 
 pub mod certificate;
+pub mod decode;
 
 /// `CanonicalEventSummary` — fixed-size container, exactly 68 bytes
 /// (8 + 8 + 20 + 32): `block_timestamp`, `sequence_nonce`, `actor_address`,
