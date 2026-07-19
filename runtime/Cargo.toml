@@ -6,7 +6,8 @@ members = [
     "ssr",
     "ssz",
     "hash",
-    "verify"
+    "verify",
+    "bridge",
 ]
 resolver = "2"
 
