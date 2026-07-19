@@ -84,6 +84,9 @@ pub enum Domain {
     TrieBranch,
     LifeCert,
     SsrRoot,
+    /// Reserved for `runtime/verify`'s Gate 2 (semantic replay) envelope
+    /// integrity checks -- see `runtime/verify/src/lib.rs`.
+    Gate2Replay,
 }
 
 impl Domain {
@@ -93,6 +96,7 @@ impl Domain {
             Domain::TrieBranch => b"KAY_TRIE_BRANCH",
             Domain::LifeCert => b"KAY_LIFE_CERT",
             Domain::SsrRoot => b"KAY_SSR_ROOT",
+            Domain::Gate2Replay => b"KAY_GATE2_REPLAY",
         }
     }
 }
@@ -150,25 +154,14 @@ mod tests {
         assert_eq!(digest.to_bytes(), bytes);
     }
 
-    /// Computes the real BLAKE3 digest for the candidate vector in
-    /// `vectors/candidate.json` (domain = KAY_TRIE_LEAF, canonical_bytes = 01020304)
-    /// and prints it, so the actual output can be copied into `vectors/normative.json`
-    /// rather than trusting a hand-typed value. Run with `cargo test -- --nocapture`.
     #[test]
     fn print_candidate_vector_1_digest() {
         let canonical_bytes = [0x01u8, 0x02, 0x03, 0x04];
         let digest = derive_commitment(Domain::TrieLeaf, &canonical_bytes);
         println!("candidate_vector_1 digest_hex = {}", digest.to_hex());
-        // 32 bytes -> 64 hex characters, always.
         assert_eq!(digest.to_hex().len(), 64);
     }
 
-    /// Regression pin for candidate_vector_1. The doc that specified this vector
-    /// claimed a digest_hex value that was actually 66 hex characters long — an
-    /// impossible length for a 32-byte BLAKE3 digest, so it was never real. This
-    /// pins the value this implementation actually computes, so any future change
-    /// to the hashing logic (or the blake3 dependency version) that silently
-    /// changes output is caught immediately.
     #[test]
     fn candidate_vector_1_matches_pinned_digest() {
         let canonical_bytes = [0x01u8, 0x02, 0x03, 0x04];
@@ -179,9 +172,6 @@ mod tests {
         );
     }
 
-    /// One pinned regression vector per registered domain, all against the same
-    /// canonical bytes — proves domain separation holds and gives every domain a
-    /// real, computed (not hand-typed) reference value.
     #[test]
     fn per_domain_vectors_are_pinned_and_distinct() {
         let canonical_bytes = [0x01u8, 0x02, 0x03, 0x04];

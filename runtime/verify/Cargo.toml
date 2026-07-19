@@ -5,3 +5,6 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+kaysentinel-hash = { path = "../hash" }
+kaysentinel-cse = { path = "../cse" }
+kaysentinel-builder = { path = "../builder" }
