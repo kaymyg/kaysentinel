@@ -77,6 +77,22 @@ func VerifyGate1Invariants(stream []emes.Event) error {
 		seqInitialized = true
 
 		switch ev := e.(type) {
+		case *emes.BlockStartEvent:
+			// EMES-V1 section 2: exactly one, and it opens the stream. Without
+			// this case a second BlockStartEvent mid-stream was silently accepted.
+			if i != 0 {
+				return &Gate1Error{Index: i, Rule: "block-encapsulation", Msg: "BlockStartEvent may only appear as the first event"}
+			}
+
+		case *emes.BlockCommitEvent:
+			// EMES-V1 section 2: exactly one, and it terminates the stream.
+			if i != len(stream)-1 {
+				return &Gate1Error{Index: i, Rule: "block-encapsulation", Msg: "BlockCommitEvent may only appear as the terminal event"}
+			}
+			if txOpen {
+				return &Gate1Error{Index: i, Rule: "tx-encapsulation", Msg: "BlockCommitEvent seen while a transaction is still open"}
+			}
+
 		case *emes.TransactionStartEvent:
 			if txOpen {
 				return &Gate1Error{Index: i, Rule: "tx-encapsulation", Msg: "TransactionStartEvent seen while a transaction is already open"}
