@@ -1,0 +1,40 @@
+name: ci
+on: [push, pull_request]
+permissions:
+  contents: write
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      # this repo has never had a go.sum; generate and commit it once
+      - run: go mod tidy
+      - name: commit go.sum if it was missing or stale
+        if: github.event_name == 'push'
+        run: |
+          if [ -n "$(git status --porcelain go.mod go.sum)" ]; then
+            git config user.name  "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add go.mod go.sum
+            git commit -m "chore: generate go.sum via go mod tidy"
+            git push
+          else
+            echo "go.mod/go.sum already tidy"
+          fi
+      - run: go build ./...
+      - run: go vet ./...
+      - run: go test ./... -v
+
+  rust:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: runtime
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo build --workspace
+      - run: cargo test --workspace
