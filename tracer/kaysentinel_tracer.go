@@ -63,6 +63,9 @@ type Tracer struct {
 	errorLog []emes.InternalTracerError
 
 	pendingSelfDestruct map[uint64]common.Address
+
+	// post-state root of the block being traced, captured at OnBlockStart
+	blockRoot emes.Hash
 }
 
 func New(env emes.EnvironmentDescriptor) *Tracer {
@@ -124,6 +127,7 @@ func addr20(a common.Address) emes.Address { return emes.Address(a) }
 func (t *Tracer) OnBlockStart(ev tracing.BlockEvent) {
 	t.events = t.events[:0]
 	t.errorLog = t.errorLog[:0]
+	t.blockRoot = to32(ev.Block.Root())
 	e := &emes.BlockStartEvent{
 		EMESVersion: "EMES-V1",
 		Number:      ev.Block.NumberU64(),
@@ -133,12 +137,11 @@ func (t *Tracer) OnBlockStart(ev tracing.BlockEvent) {
 }
 
 func (t *Tracer) OnBlockEnd(err error) {
-	// StateRoot comes from OnStateUpdate, not here -- OnBlockEnd only
-	// carries an error.
-}
-
-func (t *Tracer) OnStateUpdate(update *tracing.StateUpdate) {
-	e := &emes.BlockCommitEvent{StateRoot: to32(update.Root)}
+	// go-ethereum's core/tracing exposes no OnStateUpdate hook and no
+	// StateUpdate type, so the post-state root is taken from the block
+	// header captured at OnBlockStart. Emitting here also guarantees
+	// BlockCommit is the terminal event, which Gate 1 requires.
+	e := &emes.BlockCommitEvent{StateRoot: t.blockRoot}
 	t.emit(e)
 }
 
@@ -260,7 +263,6 @@ func (t *Tracer) Hooks() *tracing.Hooks {
 	return &tracing.Hooks{
 		OnBlockStart:    t.OnBlockStart,
 		OnBlockEnd:      t.OnBlockEnd,
-		OnStateUpdate:   t.OnStateUpdate,
 		OnTxStart:       t.OnTxStart,
 		OnTxEnd:         t.OnTxEnd,
 		OnEnter:         t.OnEnter,
