@@ -195,3 +195,48 @@ func TestPreExisting_UnbalancedFrameRejected(t *testing.T) {
 		t.Fatalf("expected frame-balance rule violation, got: %v", err)
 	}
 }
+
+// --- Block encapsulation (EMES-V1 section 2) --------------------------------
+//
+// VerifyGate1Invariants documents "exactly one BlockStartEvent at Sequence 0,
+// exactly one terminal BlockCommitEvent", but for a long time only the first
+// and last elements of the stream were actually checked -- extra markers in
+// the interior passed silently. These three cases pin that down so the hole
+// cannot reopen.
+
+func TestBlockEncapsulation_DuplicateBlockStartRejected(t *testing.T) {
+	// [BlockStart, BlockStart, BlockCommit] -- the interior one is illegal.
+	stream := buildStream(&emes.BlockStartEvent{})
+	err := VerifyGate1Invariants(stream)
+	if err == nil {
+		t.Fatal("expected error for a second BlockStartEvent")
+	}
+	if !strings.Contains(err.Error(), "block-encapsulation") {
+		t.Fatalf("expected block-encapsulation rule violation, got: %v", err)
+	}
+}
+
+func TestBlockEncapsulation_DuplicateBlockCommitRejected(t *testing.T) {
+	// [BlockStart, BlockCommit, BlockCommit] -- only the terminal one is legal.
+	stream := buildStream(&emes.BlockCommitEvent{})
+	err := VerifyGate1Invariants(stream)
+	if err == nil {
+		t.Fatal("expected error for a non-terminal BlockCommitEvent")
+	}
+	if !strings.Contains(err.Error(), "block-encapsulation") {
+		t.Fatalf("expected block-encapsulation rule violation, got: %v", err)
+	}
+}
+
+func TestBlockEncapsulation_CommitWithOpenTransactionRejected(t *testing.T) {
+	// [BlockStart, TxStart, BlockCommit] -- the block closes mid-transaction,
+	// which is what a truncated or partially suppressed stream looks like.
+	stream := buildStream(&emes.TransactionStartEvent{TxIndex: 0})
+	err := VerifyGate1Invariants(stream)
+	if err == nil {
+		t.Fatal("expected error for BlockCommitEvent while a transaction is open")
+	}
+	if !strings.Contains(err.Error(), "tx-encapsulation") {
+		t.Fatalf("expected tx-encapsulation rule violation, got: %v", err)
+	}
+}
