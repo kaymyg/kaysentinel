@@ -1,12 +1,8 @@
----
-license: mit
-tags:
-  - ethereum
-  - formal-methods
-  - evm
----
-
 # KAYSentinel (PCAL + Sentinel)
+
+[![CI](https://github.com/kaymyg/kaysentinel/actions/workflows/ci.yml/badge.svg)](https://github.com/kaymyg/kaysentinel/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Rust tests](https://img.shields.io/badge/rust%20tests-76%20passing-brightgreen)](runtime/)
 
 A high-performance, client-agnostic **Protocol Integrity Runtime** that produces deterministic, client-independent representations of state execution for validation, security auditing, and forensic analysis.
 
@@ -71,44 +67,140 @@ By moving beyond simple "post-execution authorization," the KAYSentinel runtime 
 
 ```text
 ├── docs/
-│   ├── framework.md                  # Formal mathematical & semantic specification
-│   ├── semantic_architecture_spec.md # Stage-by-stage contract details & engineering gaps
-│   └── implementation_roadmap.md     # Detailed Phase 1–3 development execution plan
-├── runtime/
-│   ├── emes/                         # Execution Mutation Event Specification schemas
-│   ├── cse/                          # Canonical Semantic Event ABI definitions
-│   ├── builder/                      # Timeline reduction, generations, and SSR hydration
-│   ├── protocol/                     # Canonical protocol definitions & invariant checkers
-│   ├── hash/                         # BLAKE3 domain-separated hashing workspace
-│   └── ssz/                          # SSZ RC1 canonical schema & serialization strategy
+│   ├── framework.md                    # Formal mathematical & semantic specification
+│   ├── semantic_architecture_spec.md   # Stage-by-stage contract details & engineering gaps
+│   ├── semantic_contract.md            # Normative semantic contract
+│   ├── implementation_roadmap.md       # Phase 1–3 development execution plan
+│   ├── emes_profile.md                 # EMES-V1 wire format, corrected against real go-ethereum source
+│   ├── emes/                           # EMES v1.0 governance: spec, conformance, ADR register, reconciliation log/matrix
+│   ├── ssz_specification.md / ssz_profile.md   # SSZ RC1 schema & serialization strategy
+│   ├── hash_specification.md           # Domain-separated BLAKE3 commitment scheme
+│   ├── validation_vector_spec.md       # Frozen v1.0.0 validation vector schema
+│   ├── differential_testing.md         # Differential validation design
+│   └── live_geth_validation_runbook.md # Runbook for the one phase that needs a real Geth node
+├── runtime/                            # Rust workspace (8 crates)
+│   ├── cse/                            # Canonical Semantic Event ABI definitions
+│   ├── builder/                        # Timeline reduction, lifecycle/generation resolution, storage-root derivation
+│   ├── protocol/                       # Canonical protocol definitions & invariant checkers
+│   ├── ssr/                            # Structural Sufficient Representation types
+│   ├── hash/                           # BLAKE3 domain-separated hashing (kaysentinel-hash)
+│   ├── ssz/                            # SSZ RC1 encode + decode (kaysentinel-ssz)
+│   ├── bridge/                         # Go-tracer-shaped JSON → CanonicalSemanticEvent translation
+│   └── verify/                         # Gate 2: semantic replay + certificate verification
+├── emes/                               # Go: EMES-V1 wire event types (no Geth dependency)
+├── tracer/                             # Go: Geth-specific collector implementing core/tracing.Hooks
+├── validation/                         # Go: Gate 1 structural verifier + differential-testing engine
+├── harness/                            # Go: runs Gate 1, writes FixtureEnvelope files to disk
+├── raw/transcript/                     # Go: flat RawEvent capture (separate, not-yet-merged event pipeline — see below)
+├── multiplexer/                        # Go: fans one tracing.Hooks callback out to multiple sinks, panic-isolated
+├── schemas/                            # JSON schemas: validation vectors, SSZ conformance manifest
+├── scripts/                            # Python reference implementations (SSZ, SSR verification) for cross-checking
 └── tests/
-    └── transient_storage_case.json   # Reference EIP-1153 validation test vector
-
+    └── transient_storage_case.json     # Reference EIP-1153 validation test vector
 ```
+
+There are currently **two separate, non-integrated Go event-collection paths**
+into the pipeline: the EMES-V1 path (`emes/` + `tracer/` + `validation/gate1.go`
++ `harness/`), and a newer flat-`RawEvent` path (`raw/transcript/` +
+`multiplexer/` + `validation/normalizer.go` + `validation/engine.go`). Both
+compile and are tested independently; whether to merge them or keep both for
+different purposes is an open decision, documented as such in
+`raw/transcript/README.md`.
 
 ---
 
 ## Active Codebase & Implementation Status
 
-KAYSentinel is a functional, actively tested Rust implementation. Below is the current implementation status of our core runtime modules:
+KAYSentinel is a functional, actively tested implementation spanning a Rust
+runtime and a Go collection/validation layer. Below is the verified current
+status (test counts confirmed by running the suites directly, not carried
+over from an earlier snapshot).
 
-### What is Built & Fully Operational
+### Rust runtime — 76 passing tests across the workspace
 
-* **`runtime/emes` & `runtime/cse`:** Complete specifications and ABI mappings that capture and validate execution-layer state mutations uniformly.
-* **`runtime/builder`:** The state-reduction engine. It partitions and sequences raw incoming EMES events, reduces complex state timelines down to their terminal transitions, and resolves lifecycles (such as contract creation and self-destruction) into immutable "generations."
-  * *Status:* **21 passing unit tests.**
-* **`runtime/protocol`:** House of canonical protocol definitions, baseline error-handling bounds, and core state invariants.
-* **`runtime/hash` (`kaysentinel-hash`):** A domain-separated, deterministic commitment primitive powered by **BLAKE3**, generating invariant hashes for SSR structures.
-  * *Status:* **8 passing unit tests with pinned vectors.**
+* **`runtime/cse` & `runtime/ssr`:** Canonical Semantic Event ABI and SSR type
+  definitions consumed by every other crate.
+* **`runtime/builder`:** The state-reduction engine — partitions and
+  sequences raw incoming events, reduces timelines to terminal transitions,
+  resolves lifecycles (contract creation, self-destruction) into immutable
+  "generations," and derives storage roots via `SimpleStorageRootDeriver`.
+  * *Status:* **21 passing tests** (19 unit + 2 conformance).
+  * The storage-root deriver produces a deterministic, protocol-native
+    BLAKE3 commitment over touched slots — **not** an Ethereum-compatible
+    Merkle-Patricia Trie root (that would require Keccak256 + RLP, neither
+    of which this codebase implements; see the design note in
+    `runtime/builder/src/lifecycle/storage_root.rs`). If real MPT
+    compatibility is ever required, this deriver gets replaced, not
+    extended — that's exactly what the `StorageRootDeriver` trait boundary
+    is for.
+* **`runtime/protocol`:** Canonical protocol definitions, error-handling
+  bounds, core state invariants. **2 passing tests.**
+* **`runtime/hash` (`kaysentinel-hash`):** Domain-separated BLAKE3 commitment
+  primitive. **8 passing tests with pinned vectors.**
+* **`runtime/ssz` (`kaysentinel-ssz`):** SSZ RC1 encode **and decode**, with
+  round-trip tests (`decode(encode(x)) == x`) plus explicit rejection tests
+  for truncated, oversized, and trailing-garbage input. **25 passing tests.**
+* **`runtime/bridge` (`kaysentinel-bridge`):** Parses Go-tracer-shaped JSON
+  event streams and translates them into `CanonicalSemanticEvent`s — the
+  actual Go→Rust boundary. **7 passing integration tests.**
+* **`runtime/verify` (`kaysentinel-verify`):** Gate 2 — semantic replay and
+  certificate verification (`replay_and_verify`, `ExecutionBatchReplay`).
+  Independently re-derives and checks storage roots, catches missing or
+  extra certificates, wrong-domain commitments, and tampered bytes.
+  **11 passing tests.**
+* **Capstone integration test** (`runtime/tests/full_pipeline.rs`): a
+  Go-tracer-shaped JSON stream through every real stage — parse → translate
+  → partition → reduce → resolve lifecycles → build certificates + derive
+  storage roots → Gate 2 verify — with no mocks or simulated stand-ins.
+  **2 passing tests** (including a reverted-frame case).
+
+### Go collection & validation layer
+
+* **`emes/` + `tracer/` + `validation/gate1.go` + `harness/`:** The Geth
+  tracer implements `core/tracing.Hooks` against real `go-ethereum@v1.16.9`
+  types, compiles and vets clean, and was run end-to-end against a
+  hand-constructed synthetic transaction — it collected a full EMES-V1
+  stream (including a correctly-correlated `SelfDestructEvent`), Gate 1
+  passed it, and the harness wrote a real fixture file to disk. Gate 1 was
+  also fed two deliberately broken streams and correctly rejected both.
+  **13 Go tests** covering Gate 1, including duplicate and mid-stream block
+  markers.
+* **`raw/transcript/` + `multiplexer/` + `validation/normalizer.go` +
+  `validation/engine.go`:** A separate flat-`RawEvent` capture path with its
+  own differential validator, also compiling/vetting clean and exercised
+  end-to-end (panic isolation across multiple hook sinks, confirmed eviction,
+  a deliberately injected field mismatch correctly caught).
+* **Not yet done:** registration as a live tracer against a real running
+  Geth node, a real (non-synthetic) EVM transaction trace, and Reth
+  integration. `docs/live_geth_validation_runbook.md` is the runbook for
+  exactly this remaining phase — it's infrastructure/hardware work, not
+  unwritten code.
+
+> **Note on running the Go tests yourself:** this repo's `go.mod` requires
+> Go 1.24+ and real dependencies (`go-ethereum`, `holiman/uint256`) fetched
+> from the module proxy. If your environment blocks that proxy, `go build`
+> will fail with a 403 rather than a code error — that's a network policy
+> issue, not a broken checkout.
 
 ### Current Gaps & Near-Term Roadmap
 
-1. **SSZ Serialization Incompleteness (`runtime/ssz`):** While the **SSZ RC1** schemas and serialization strategy are designed, the complete serialization/deserialization implementation remains incomplete.
-2. **Storage Trie Derivation:** The trait interfaces for state trie derivation are defined, but the actual trie-generation code is pending. Currently, `storage_root` calculations default to `AwaitingDerivation`.
-3. **Client-Side Extractors (Geth & Reth Hooks):** The out-of-process hooks that actually generate the raw EMES event stream from live execution clients are not yet written. The builder pipeline is currently tested and validated using high-fidelity simulated trace vectors.
-   * *Target Geth integration:* `StateDB` journal hooks.
-   * *Target Reth integration:* `BundleState` transition stage hooks.
-4. **Cross-Language Verification:** Tooling to verify and test hash vector equivalence across Rust and Go boundary environments is planned but not yet implemented.
+1. **Live Geth integration.** The tracer, Gate 1, and the full Rust pipeline
+   (through Gate 2) are all real and tested against synthetic/simulated
+   input. Running the actual tracer against a live `geth --dev` node and
+   feeding a real transaction trace through the whole pipeline has not been
+   done yet — see `docs/live_geth_validation_runbook.md`.
+2. **Reth integration.** No `BundleState` transition-stage hooks exist yet;
+   Geth is currently the only supported client.
+3. **Storage root is protocol-native, not Ethereum-MPT-compatible.** See the
+   design note above — this is a deliberate interim choice, not an oversight,
+   but it means KAYSentinel's storage commitments can't currently be compared
+   directly against a client's real state root.
+4. **The two Go event-collection paths aren't merged.** See "Repository &
+   Runtime Architecture" above.
+5. **Cross-language verification exists for synthetic/simulated JSON, not
+   yet for a live-captured Geth trace.** `full_pipeline.rs` proves the Rust
+   side of the Go→Rust boundary works end-to-end; closing gap #1 above is
+   what would let that same pipeline run on real captured data.
 
 ---
 
@@ -121,3 +213,20 @@ Our reference test vectors and multi-client execution fixtures (evaluating bound
 ## License
 
 This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+
+## Contributing
+
+Bug reports, new test vectors, and PRs are welcome — see
+[`CONTRIBUTING.md`](CONTRIBUTING.md) for how to build both sides of the
+codebase and what CI checks.
+
+## Security
+
+Found a case where two clients' SSRs should differ but the canonical hash
+matches (or vice versa), or a way to defeat Gate 1/Gate 2 verification?
+Please see [`SECURITY.md`](SECURITY.md) for how to report it responsibly
+rather than opening a public issue.
+
+## Changelog
+
+See [`CHANGELOG.md`](CHANGELOG.md).

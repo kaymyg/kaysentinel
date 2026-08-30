@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security vulnerability (working collision, bypass, or forgery)
+    url: https://github.com/kaymyg/kaysentinel/security/advisories/new
+    about: Please report working soundness breaks privately — see SECURITY.md

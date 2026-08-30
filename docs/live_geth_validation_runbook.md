@@ -57,7 +57,7 @@ go build ./...
 cd runtime
 cargo test -j 2
 ```
-Expected: `go build` silent success; `cargo test` reports 74 passing, 0
+Expected: `go build` silent success; `cargo test` reports 76 passing, 0
 failed. If either fails BEFORE you've touched Geth, stop and fix that first
 — it means the local checkout is broken, not the tracer.
 
