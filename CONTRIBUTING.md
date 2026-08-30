@@ -12,7 +12,7 @@ exposes a real discrepancy) are especially valuable.
 ```bash
 cd runtime
 cargo build --workspace
-cargo test --workspace   # 76 tests across 8 crates
+cargo test --workspace   # 77 tests across 8 crates
 ```
 
 No special setup needed — standard `cargo`, stable toolchain.

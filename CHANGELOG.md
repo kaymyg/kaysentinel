@@ -8,6 +8,25 @@ commit history (2026-07-05 through 2026-07-28) into milestones rather than
 listing all ~50 commits individually, then marks today's additions as the
 first tagged release.
 
+## [Unreleased]
+
+### Added
+
+- `runtime/ssz`: off-by-one, nil, and overflow offset boundary tests for
+  `EpochStateSnapshot::ssz_decode`, modeled on the invalid-container
+  categories in the official
+  [`ethereum/consensus-spec-tests`](https://github.com/ethereum/consensus-spec-tests)
+  suite (`ssz_generic/containers/invalid/`, e.g.
+  `VarTestStruct_one_offset_2_minus_one`). The official binary fixtures
+  decode the spec's own generic test containers, not KAYSentinel's structs,
+  so they weren't imported directly — this reconstructs the same edge-case
+  *category* against the real `EpochStateSnapshot` encoder/decoder instead.
+  25 → 26 tests in `kaysentinel-ssz`; 76 → 77 across the workspace.
+- README "Related Work" section citing `ethereum/hive` as prior art for the
+  cross-client conformance goal, and noting the official EVM test-fixture
+  source moved from the now-archived `ethereum/execution-spec-tests` to
+  `ethereum/execution-specs`.
+
 ## [0.1.0] - 2026-07-28
 
 First tagged release. KAYSentinel is pre-1.0: the Rust pipeline and the
