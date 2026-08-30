@@ -233,6 +233,63 @@ mod tests {
         ));
     }
 
+    /// Off-by-one and nil-offset boundary cases, modeled on the invalid
+    /// container categories in ethereum/consensus-spec-tests'
+    /// `ssz_generic/containers/invalid/` suite (e.g.
+    /// `VarTestStruct_one_offset_2_minus_one`,
+    /// `VarTestStruct_nil_offset_2_plus_one`). Those fixtures decode the
+    /// spec's own generic test containers, not `EpochStateSnapshot`, so
+    /// they can't be imported directly here -- this reconstructs the same
+    /// *category* of edge case against this crate's real encoder/decoder
+    /// instead. `EpochStateSnapshot::ssz_decode` checks the offset via a
+    /// single equality (`offset != FIXED_HEADER`), so unlike the spec's
+    /// multi-offset generic containers, every wrong-offset subcategory here
+    /// collapses onto the same `InvalidOffset` branch -- these tests exist
+    /// to pin that boundary precisely (11 and 13, not just an arbitrary
+    /// wrong value like 0xFF) so a future refactor to range-based
+    /// validation can't quietly get the edge off by one.
+    #[test]
+    fn snapshot_rejects_off_by_one_and_nil_offsets() {
+        let valid = EpochStateSnapshot { epoch_index: 1, event_summaries: vec![sample_summary()] }
+            .ssz_encode()
+            .unwrap();
+        assert_eq!(
+            u32::from_le_bytes(valid[8..12].try_into().unwrap()),
+            EpochStateSnapshot::FIXED_HEADER as u32,
+            "test assumes the valid encoding's offset is exactly FIXED_HEADER"
+        );
+
+        let corrupt_offset_to = |value: u32| {
+            let mut bytes = valid.clone();
+            bytes[8..12].copy_from_slice(&value.to_le_bytes());
+            bytes
+        };
+
+        // offset_2_minus_one: one byte short of the only legal value.
+        assert!(matches!(
+            EpochStateSnapshot::ssz_decode(&corrupt_offset_to(EpochStateSnapshot::FIXED_HEADER as u32 - 1)),
+            Err(SszDecodeError::InvalidOffset { .. })
+        ));
+
+        // offset_2_plus_one: one byte past the only legal value.
+        assert!(matches!(
+            EpochStateSnapshot::ssz_decode(&corrupt_offset_to(EpochStateSnapshot::FIXED_HEADER as u32 + 1)),
+            Err(SszDecodeError::InvalidOffset { .. })
+        ));
+
+        // nil_offset: zero, as if the variable-length field were absent.
+        assert!(matches!(
+            EpochStateSnapshot::ssz_decode(&corrupt_offset_to(0)),
+            Err(SszDecodeError::InvalidOffset { .. })
+        ));
+
+        // lengthy_offset: an offset pointing past the end of the buffer entirely.
+        assert!(matches!(
+            EpochStateSnapshot::ssz_decode(&corrupt_offset_to(u32::MAX)),
+            Err(SszDecodeError::InvalidOffset { .. })
+        ));
+    }
+
     #[test]
     fn certificate_round_trips() {
         let original = sample_certificate();

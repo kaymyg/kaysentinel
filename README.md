@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/kaymyg/kaysentinel/actions/workflows/ci.yml/badge.svg)](https://github.com/kaymyg/kaysentinel/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Rust tests](https://img.shields.io/badge/rust%20tests-76%20passing-brightgreen)](runtime/)
+[![Rust tests](https://img.shields.io/badge/rust%20tests-77%20passing-brightgreen)](runtime/)
 
 A high-performance, client-agnostic **Protocol Integrity Runtime** that produces deterministic, client-independent representations of state execution for validation, security auditing, and forensic analysis.
 
@@ -116,7 +116,7 @@ runtime and a Go collection/validation layer. Below is the verified current
 status (test counts confirmed by running the suites directly, not carried
 over from an earlier snapshot).
 
-### Rust runtime — 76 passing tests across the workspace
+### Rust runtime — 77 passing tests across the workspace
 
 * **`runtime/cse` & `runtime/ssr`:** Canonical Semantic Event ABI and SSR type
   definitions consumed by every other crate.
@@ -139,7 +139,10 @@ over from an earlier snapshot).
   primitive. **8 passing tests with pinned vectors.**
 * **`runtime/ssz` (`kaysentinel-ssz`):** SSZ RC1 encode **and decode**, with
   round-trip tests (`decode(encode(x)) == x`) plus explicit rejection tests
-  for truncated, oversized, and trailing-garbage input. **25 passing tests.**
+  for truncated, oversized, and trailing-garbage input, including precise
+  off-by-one/nil/overflow offset boundary cases modeled on
+  [`ethereum/consensus-spec-tests`](https://github.com/ethereum/consensus-spec-tests)'
+  `ssz_generic/containers/invalid/` category. **26 passing tests.**
 * **`runtime/bridge` (`kaysentinel-bridge`):** Parses Go-tracer-shaped JSON
   event streams and translates them into `CanonicalSemanticEvent`s — the
   actual Go→Rust boundary. **7 passing integration tests.**
@@ -201,6 +204,39 @@ over from an earlier snapshot).
    yet for a live-captured Geth trace.** `full_pipeline.rs` proves the Rust
    side of the Go→Rust boundary works end-to-end; closing gap #1 above is
    what would let that same pipeline run on real captured data.
+
+---
+
+## Related Work
+
+KAYSentinel's cross-client conformance goal has real precedent worth being
+explicit about:
+
+- **[`ethereum/hive`](https://github.com/ethereum/hive)** is the Ethereum
+  Foundation's own cross-client integration test harness — it verifies that
+  independent execution clients agree at the RPC / Engine API / consensus
+  level. KAYSentinel targets a different, lower layer (canonical state
+  *mutations*, not RPC responses), but the goal — independent
+  implementations provably agreeing — is the same. A KAYSentinel simulator
+  plugged into Hive is a plausible path to real multi-client trace data
+  instead of synthetic vectors, once live-node integration (see "Current
+  Gaps") is further along.
+- **Official EVM test vectors.** The modern source of official,
+  client-generated state-transition test fixtures (formerly
+  `ethereum/execution-spec-tests` / EEST) was archived and folded into
+  [`ethereum/execution-specs`](https://github.com/ethereum/execution-specs),
+  which now publishes fixture releases directly. Worth pointing anyone
+  contributing test vectors at the current location rather than the
+  archived repo.
+- **SSZ.** `runtime/ssz` implements "SSZ RC1" — a deliberate variant, not
+  the real Ethereum consensus SSZ spec (domain-separated BLAKE3 instead of
+  SHA256 hash-tree-root; see the design note in
+  `runtime/builder/src/lifecycle/storage_root.rs` for why). The official
+  [`ethereum/consensus-spec-tests`](https://github.com/ethereum/consensus-spec-tests)
+  suite's hash outputs therefore don't apply here, but its documented
+  *structural* edge-case taxonomy (off-by-one and nil offsets, oversized
+  lists, trailing bytes) informed additional boundary tests in
+  `runtime/ssz/src/decode.rs`.
 
 ---
 
