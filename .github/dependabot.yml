@@ -1,16 +1,29 @@
+# Updates arrive grouped: one PR per ecosystem per week for minor/patch
+# bumps, so the queue stays reviewable. Major versions still get their own
+# PR because they are the ones that need a human look.
 version: 2
 updates:
-  - package-ecosystem: "cargo"
-    directory: "/runtime"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 5
   - package-ecosystem: "gomod"
     directory: "/"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    groups:
+      gomod-minor-patch:
+        update-types: ["minor", "patch"]
+  - package-ecosystem: "cargo"
+    directory: "/runtime"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      cargo_runtime-minor-patch:
+        update-types: ["minor", "patch"]
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
+    open-pull-requests-limit: 5
+    groups:
+      actions:
+        patterns: ["*"]
