@@ -1,29 +1,33 @@
 name: ci
-on: [push, pull_request]
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# CI only reads the repo. go.sum is committed now, so the old step that pushed
+# a generated go.sum back to main (and needed contents: write) is replaced by a
+# check that fails if go.mod/go.sum are not tidy.
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   go:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
-          go-version: '1.24'
-      # this repo has never had a go.sum; generate and commit it once
-      - run: go mod tidy
-      - name: commit go.sum if it was missing or stale
-        if: github.event_name == 'push'
-        run: |
-          if [ -n "$(git status --porcelain go.mod go.sum)" ]; then
-            git config user.name  "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add go.mod go.sum
-            git commit -m "chore: generate go.sum via go mod tidy"
-            git push
-          else
-            echo "go.mod/go.sum already tidy"
-          fi
+          # go-ethereum 1.17 needs Go 1.25; read the version from go.mod so the
+          # two can never drift apart again.
+          go-version-file: go.mod
+      - name: go.mod and go.sum are tidy
+        run: go mod tidy -diff
       - run: go build ./...
       - run: go vet ./...
       - run: go test ./... -v
@@ -36,5 +40,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo build --workspace
-      - run: cargo test --workspace
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: runtime
+      - run: cargo build --workspace --locked
+      - run: cargo test --workspace --locked
