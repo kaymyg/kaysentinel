@@ -3,6 +3,7 @@
 [![CI](https://github.com/kaymyg/kaysentinel/actions/workflows/ci.yml/badge.svg)](https://github.com/kaymyg/kaysentinel/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Rust tests](https://img.shields.io/badge/rust%20tests-77%20passing-brightgreen)](runtime/)
+[![CodeQL](https://github.com/kaymyg/kaysentinel/actions/workflows/codeql.yml/badge.svg)](https://github.com/kaymyg/kaysentinel/actions/workflows/codeql.yml)
 
 A high-performance, client-agnostic **Protocol Integrity Runtime** that produces deterministic, client-independent representations of state execution for validation, security auditing, and forensic analysis.
 
