@@ -44,7 +44,7 @@ https://rustup.rs — default settings. Verify: `cargo --version`.
 ### 1.4 Get the repo locally
 You already have `kaysentinel_clone`. Pull latest:
 ```powershell
-cd "C:\Users\you\Downloads\KAYSENTINEL FULL REPO\kaysentinel_clone"
+cd path\to\kaysentinel   # wherever you cloned the repo
 git pull
 ```
 

@@ -253,6 +253,8 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
 
 ## Contributing
 
+Looking for something to work on? See [HELP_WANTED.md](HELP_WANTED.md).
+
 Bug reports, new test vectors, and PRs are welcome — see
 [`CONTRIBUTING.md`](CONTRIBUTING.md) for how to build both sides of the
 codebase and what CI checks.
